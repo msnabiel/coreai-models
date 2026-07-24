@@ -34,6 +34,7 @@ import Tokenizers
 ///     jsonSchema: schemaString
 /// )
 /// ```
+@available(iOS 27.0, macOS 27.0, *)
 public struct ConstrainedGenerator: DecodingStrategy {
     private let engine: any InferenceEngine
     private let tokenizer: any Tokenizer

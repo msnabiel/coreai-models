@@ -15,6 +15,7 @@ import Tokenizers
 /// The continuation may merge with the end of context (e.g., " " + "B" → " B").
 /// We find where tokens diverge and consider all tokens from that point as part
 /// of the continuation for evaluation purposes.
+@available(iOS 27.0, macOS 27.0, *)
 public struct ContinuationEncoding: Sendable {
     /// Tokens for the context part (tokens that are identical in both encodings)
     public let contextTokens: [Int32]
@@ -56,6 +57,7 @@ public struct ContinuationEncoding: Sendable {
 // MARK: - Continuation Evaluation Result
 
 /// Result of continuation evaluation containing logits for each continuation position
+@available(iOS 27.0, macOS 27.0, *)
 public struct ContinuationEvaluationResult: Sendable {
     /// Tokens for the context part
     public let contextTokens: [Int32]
@@ -134,6 +136,7 @@ public struct ContinuationEvaluationResult: Sendable {
 
 // MARK: - Errors
 
+@available(iOS 27.0, macOS 27.0, *)
 public enum ContinuationEvaluationError: Error, LocalizedError {
     case requiresDisabledChatTemplate
     case requiresLogitsOutput

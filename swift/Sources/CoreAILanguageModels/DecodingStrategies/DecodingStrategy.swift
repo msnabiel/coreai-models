@@ -9,6 +9,7 @@ import Tokenizers
 // MARK: - Generation Result
 
 /// Decoded text with optional token ID and logits.
+@available(iOS 27.0, macOS 27.0, *)
 public struct GenerationResult: Sendable {
     public let text: String
     public let tokenId: Int32
@@ -59,6 +60,7 @@ public struct GenerationResult: Sendable {
 ///     }
 /// }
 /// ```
+@available(iOS 27.0, macOS 27.0, *)
 public struct StopSequences: Sendable {
     /// All stop sequences (each is an array of token IDs)
     public let sequences: [[Int32]]
@@ -155,6 +157,7 @@ public struct StopSequences: Sendable {
 
 /// Decoding strategies produce text + optional enrichments (logits, token IDs)
 /// from an inference engine.
+@available(iOS 27.0, macOS 27.0, *)
 public protocol DecodingStrategy: Sendable {
     associatedtype ResultSequence: AsyncSequence<GenerationResult, Error>
 
@@ -184,6 +187,7 @@ public protocol DecodingStrategy: Sendable {
 // MARK: - Decoding Strategy Factory
 
 /// Factory for creating decoding strategies
+@available(iOS 27.0, macOS 27.0, *)
 public struct DecodingStrategyFactory {
     /// Creates a decoding strategy of the specified type
     /// - Parameters:
@@ -201,12 +205,14 @@ public struct DecodingStrategyFactory {
 }
 
 /// Enumeration of available decoding strategy types
+@available(iOS 27.0, macOS 27.0, *)
 public enum DecodingType {
     /// Standard vanilla decoding strategy (text-only)
     case vanilla
 }
 
 /// Parameters for configuring decoding strategies
+@available(iOS 27.0, macOS 27.0, *)
 public struct DecodingParameters: Sendable {
     /// Initializes decoding parameters with default values
     public init() {

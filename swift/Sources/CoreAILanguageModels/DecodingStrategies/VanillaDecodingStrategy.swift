@@ -12,6 +12,7 @@ import os.signpost
 ///
 /// Handles text decoding, stop sequence detection, and Instruments profiling.
 /// Uses `InferenceEngine.generate()` for the underlying token stream.
+@available(iOS 27.0, macOS 27.0, *)
 public struct VanillaDecodingStrategy: DecodingStrategy {
     public init() {}
 

@@ -16,6 +16,7 @@ import Tokenizers
 /// Each step: (1) run one inference step to get logits, (2) apply the grammar bitmask
 /// to zero out tokens that would violate the JSON schema, (3) sample from the masked
 /// logits, (4) accept the token in the grammar matcher to advance the grammar state.
+@available(iOS 27.0, macOS 27.0, *)
 public struct ConstrainedDecodingStrategy: DecodingStrategy {
     /// The JSON schema that constrains generation output.
     private let jsonSchema: String
