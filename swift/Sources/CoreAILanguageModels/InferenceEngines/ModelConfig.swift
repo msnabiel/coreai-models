@@ -118,6 +118,7 @@ public struct ModelConfig: InferenceConfiguration, Codable, Sendable {
 
 // MARK: - Convenience accessors
 
+@available(iOS 27.0, macOS 27.0, *)
 extension ModelConfig {
     /// Resolved model definition — returns the explicit value or `.pyTorch` as default.
     public var resolvedModelDefinition: ModelSource.ModelDefinition {
@@ -127,6 +128,7 @@ extension ModelConfig {
 
 // MARK: - Chunking overrides (--chunk-size / COREAI_CHUNK_THRESHOLD)
 
+@available(iOS 27.0, macOS 27.0, *)
 extension ModelConfig {
     /// Chunk threshold: prompts above this length get chunked (default: 1024).
     /// Override via `--chunk-size 128` or `COREAI_CHUNK_THRESHOLD=128` for MoE models.
@@ -150,6 +152,7 @@ private let acceptedFileExtensions: [String] = [
     ".aimodel"
 ]
 
+@available(iOS 27.0, macOS 27.0, *)
 extension ModelConfig {
     /// Creates a model configuration from raw data.
     public init(parsing data: Data) throws {

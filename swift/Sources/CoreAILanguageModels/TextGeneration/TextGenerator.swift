@@ -334,6 +334,7 @@ public enum TextGeneratorError: Error, LocalizedError {
 
 // MARK: - Convenience Extensions
 
+@available(iOS 27.0, macOS 27.0, *)
 extension TextGenerator {
     /// Quick generation with default parameters
     public func quickGenerate(_ input: Input) async throws -> String {
