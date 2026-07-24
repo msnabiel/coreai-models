@@ -19,6 +19,7 @@ import Synchronization
 ///
 /// Extends the base `ModelConfig` with vision-specific parameters: image size,
 /// patch geometry, placeholder token ID, and per-image embedding token count.
+@available(iOS 27.0, macOS 27.0, *)
 public struct VLMModelConfig: InferenceConfiguration, Codable, Sendable {
     public let base: ModelConfig
     public let visionConfig: VisionConfig
@@ -71,6 +72,7 @@ public struct VLMModelConfig: InferenceConfiguration, Codable, Sendable {
 ///
 /// KV cache is managed identically to `CoreAISequentialEngine`: starts small and grows
 /// dynamically with 2x expansion.
+@available(iOS 27.0, macOS 27.0, *)
 public final class CoreAISequentialVLMEngine: MultimodalInferenceEngine, @unchecked Sendable {
     public typealias ConfigType = VLMModelConfig
     public typealias OutputSequence = GenerationSequence

@@ -17,6 +17,7 @@ public typealias LogitsScalarType = Float
 
 /// Single step output from `InferenceEngine.generate()`.
 /// Contains the sampled token and optionally raw logits.
+@available(iOS 27.0, macOS 27.0, *)
 public struct InferenceOutput: Sendable {
     public let tokenId: Int32
 
@@ -33,6 +34,7 @@ public struct InferenceOutput: Sendable {
 
 /// Controls what the engine produces and how much.
 /// Struct-based for additive extensibility (future: embeddings, attention maps).
+@available(iOS 27.0, macOS 27.0, *)
 public struct InferenceOptions: Sendable {
     /// Max tokens to generate. Nil = until EOS or context limit.
     public var maxTokens: Int?
@@ -56,6 +58,7 @@ public struct InferenceOptions: Sendable {
 // MARK: - Configuration Data Structures
 
 /// Configuration-specific errors with user-friendly messages
+@available(iOS 27.0, macOS 27.0, *)
 public enum ConfigurationError: Error, LocalizedError {
     case fileNotFound(String)
     case invalidJSON(String, String)
@@ -84,6 +87,7 @@ public enum ConfigurationError: Error, LocalizedError {
 /// Interface for inference engines.
 ///
 /// KV cache is preserved between `generate()` calls. Call `reset()` to clear.
+@available(iOS 27.0, macOS 27.0, *)
 public protocol InferenceEngine: Sendable {
     associatedtype OutputSequence: InferenceOutputSequence
     typealias TokenId = Int32
@@ -148,6 +152,7 @@ public protocol InferenceEngine: Sendable {
     var config: ConfigType { get }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 public protocol InferenceConfiguration: Sendable {
     var maxContextLength: Int { get }
 
@@ -232,6 +237,7 @@ extension InferenceEngine {
 
 // MARK: - Errors
 
+@available(iOS 27.0, macOS 27.0, *)
 public enum InferenceRuntimeError: Error, LocalizedError {
     case functionNotFound(String)
     case modelNotFound(String)
@@ -299,6 +305,7 @@ public enum InferenceRuntimeError: Error, LocalizedError {
 ///    token sequence and run prefill + decode
 ///
 /// The caller owns the embeddings and decides caching strategy.
+@available(iOS 27.0, macOS 27.0, *)
 public protocol MultimodalInferenceEngine: InferenceEngine {
     /// Encode an image into embeddings suitable for injection into the VLM.
     /// Returns the embedded representation — caller decides whether to cache.
@@ -326,6 +333,7 @@ public protocol MultimodalInferenceEngine: InferenceEngine {
 ///
 /// Determines how the KV cache is allocated and managed at runtime.
 /// This is engine-level configuration applicable to any engine that uses KV caching.
+@available(iOS 27.0, macOS 27.0, *)
 public enum KVCacheStrategy: String, Codable, Sendable, CaseIterable {
     /// Auto-select the best strategy based on model capability.
     /// - For models exported with `--dynamic-sized-kvcache-gpu`: uses `growing`

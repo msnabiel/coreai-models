@@ -12,6 +12,7 @@ import Synchronization
 // MARK: - Prefill Strategy
 
 /// Determines the optimal prefill strategy based on prompt size.
+@available(iOS 27.0, macOS 27.0, *)
 enum PrefillStrategy {
     case chunked(chunkSize: Int)
     case wholeBatch
@@ -31,6 +32,7 @@ enum PrefillStrategy {
 ///
 /// KV cache NDArrays start small (256 tokens) and grow dynamically with 2× expansion.
 /// Passed as `states` on every forward pass; the model graph updates them in-place.
+@available(iOS 27.0, macOS 27.0, *)
 public final class CoreAISequentialEngine: InferenceEngine, @unchecked Sendable {
     public typealias ConfigType = ModelConfig
 

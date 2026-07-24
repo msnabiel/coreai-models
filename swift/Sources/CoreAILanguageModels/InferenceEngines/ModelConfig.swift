@@ -8,6 +8,7 @@ import Foundation
 // MARK: - Model Source
 
 /// Model source configuration.
+@available(iOS 27.0, macOS 27.0, *)
 public struct ModelSource: Codable, Sendable {
     public let hfModelId: String?
     public let modelDefinition: ModelDefinition?
@@ -52,6 +53,7 @@ public struct ModelSource: Codable, Sendable {
 /// | `model_definition`    | (on source)           | ``ModelSource/ModelDefinition`` | `.pyTorch` | Model origin framework |
 ///
 /// Use ``resolvedModelDefinition`` for safe access with defaults.
+@available(iOS 27.0, macOS 27.0, *)
 public struct ModelConfig: InferenceConfiguration, Codable, Sendable {
     public let maxContextLength: Int
 

@@ -42,6 +42,7 @@ private let minimumMPSNDArrayBufferSize = 64
 /// - Pipeline-depth-matched buffer rotation for CPU/GPU overlap
 /// - Growing KV cache with pipelined expansion
 /// - All tensors are owned MTLBuffers — Core AI never allocates/frees them
+@available(iOS 27.0, macOS 27.0, *)
 final class CoreAIPipelinedEngine: InferenceEngine, Sendable {
     typealias ConfigType = ModelConfig
 
@@ -329,6 +330,7 @@ final class CoreAIPipelinedEngine: InferenceEngine, Sendable {
 /// Class, not actor: `release()` runs synchronously from the Metal callback —
 /// an actor would force `Task { await release() }` with ordering ambiguity.
 /// `internal` (not `private`) so `PipelineGateTests` can reach it.
+@available(iOS 27.0, macOS 27.0, *)
 final class PipelineGate: Sendable {
     private struct State: Sendable {
         var inFlight: Int = 0

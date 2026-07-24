@@ -17,6 +17,7 @@ import Tokenizers
 /// let runner = try CoreAIRunner(contentsOf: url)
 /// let engine = try await runner.makeInferenceEngine()
 /// ```
+@available(iOS 27.0, macOS 27.0, *)
 public struct CoreAIRunner {
     // MARK: - Properties
 

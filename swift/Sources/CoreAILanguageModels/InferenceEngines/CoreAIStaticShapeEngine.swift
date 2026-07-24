@@ -10,6 +10,7 @@ import Foundation
 import Synchronization
 
 /// Static-shape inference engine using Core AI models.
+@available(iOS 27.0, macOS 27.0, *)
 public final class StaticShapeEngine: InferenceEngine, @unchecked Sendable {
     public typealias ConfigType = ModelConfig
 
