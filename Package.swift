@@ -9,7 +9,9 @@ import PackageDescription
 
 let package = Package(
     name: "coreai-models",
-    platforms: [.macOS("27.0"), .iOS("27.0")],
+    // Keep the package consumable by iOS 18 apps. CoreAI-backed code is
+    // conditionally compiled and remains available only on supported devices.
+    platforms: [.macOS("27.0"), .iOS("18.0")],
     products: [
         .library(
             name: "CoreAILM",
