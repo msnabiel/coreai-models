@@ -6,6 +6,7 @@
 // TODO: Refactor to re-use common components with CoreAISequentialEngine
 // TODO: Add pipelined engine variant for higher throughput
 
+#if canImport(CoreAI)  // canImport-CoreAI sim guard: CoreAI is device-only (absent on iOS Simulator SDK)
 import CoreAI
 import CoreAIShared
 import CoreImage
@@ -940,6 +941,8 @@ public final class CoreAISequentialVLMEngine: MultimodalInferenceEngine, @unchec
         }
     }
 }
+
+#endif
 
 // MARK: - Generation Sequence
 
