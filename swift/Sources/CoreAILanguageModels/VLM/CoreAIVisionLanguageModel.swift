@@ -5,6 +5,7 @@
 
 // Foundation Models protocol implementation for VLM bundles.
 
+#if canImport(CoreAI)  // canImport-CoreAI sim guard: CoreAI is device-only (absent on iOS Simulator SDK)
 import CoreAI
 import CoreGraphics
 import Foundation
@@ -241,3 +242,5 @@ public struct CoreAIVLMExecutor: LanguageModelExecutor {
         return tokenizer.encode(text: chatText).map { Int32($0) }
     }
 }
+
+#endif
