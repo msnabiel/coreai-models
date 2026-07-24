@@ -295,6 +295,7 @@ public struct EngineOptions: Sendable {
     }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension EngineFactory {
     /// Determines the appropriate engine variant based on model structure.
     private enum Variant: String, Sendable, CaseIterable {

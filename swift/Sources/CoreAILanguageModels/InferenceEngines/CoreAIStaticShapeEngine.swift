@@ -607,6 +607,7 @@ public final class StaticShapeEngine: InferenceEngine, @unchecked Sendable {
     }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension StaticShapeEngine {
     /// Async sequence of `InferenceOutput` produced by `generate()`.
     ///
@@ -645,6 +646,7 @@ extension StaticShapeEngine {
     }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension StaticShapeEngine.GenerationSequence {
     public struct Iterator: AsyncIteratorProtocol {
         public typealias Element = InferenceOutput

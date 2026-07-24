@@ -401,6 +401,7 @@ final class PipelineGate: Sendable {
 
 // MARK: - Engine Implementation
 
+@available(iOS 27.0, macOS 27.0, *)
 private struct EngineImpl: ~Copyable {
     var vocabSize: Int { config.vocabSize }
 
@@ -1229,6 +1230,7 @@ private struct EngineImpl: ~Copyable {
     }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension CoreAIPipelinedEngine {
     /// Async sequence of `InferenceOutput` produced by `generate()`.
     ///
@@ -1254,6 +1256,7 @@ extension CoreAIPipelinedEngine {
     }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension CoreAIPipelinedEngine.GenerationSequence {
     public struct Iterator: AsyncIteratorProtocol {
         public typealias Element = InferenceOutput

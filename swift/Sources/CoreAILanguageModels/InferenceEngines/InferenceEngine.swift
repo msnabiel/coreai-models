@@ -165,6 +165,7 @@ public protocol InferenceConfiguration: Sendable {
     var chunkThreshold: Int { get }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension InferenceConfiguration {
     /// Default prefill chunk size: 512 tokens.
     ///
@@ -185,17 +186,20 @@ extension InferenceConfiguration {
 
 // MARK: - Default Implementations
 
+@available(iOS 27.0, macOS 27.0, *)
 extension InferenceEngine {
     /// Default: supportsLogits is false. Engines that can return per-step
     /// logits (sequential, static-shape) override this to true.
     public var supportsLogits: Bool { false }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension InferenceEngine {
     /// Default: no prefix hits (engine doesn't track history).
     public var lastPrefixHitCount: Int { 0 }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension InferenceEngine {
     /// Default: engine is not busy.
     public var isBusy: Bool { false }
@@ -204,6 +208,7 @@ extension InferenceEngine {
     public func cancel() async throws {}
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension InferenceEngine {
     /// Default no-op implementation of warmup.
     public func warmup(queryLength: Int, sampling: SamplingConfiguration?) async throws {
@@ -211,11 +216,13 @@ extension InferenceEngine {
     }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension InferenceEngine {
     /// Default: processedTokenCount is 0 (engine hasn't processed anything).
     public var processedTokenCount: Int { 0 }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension InferenceEngine {
     /// Default: reset() delegates to reset(to: 0) for full reset.
     public func reset() async throws {
@@ -223,6 +230,7 @@ extension InferenceEngine {
     }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension InferenceEngine {
     /// Default implementation: accepts all sampling configurations.
     ///

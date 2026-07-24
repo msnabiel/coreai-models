@@ -946,6 +946,7 @@ public final class CoreAISequentialVLMEngine: MultimodalInferenceEngine, @unchec
 
 // MARK: - Generation Sequence
 
+@available(iOS 27.0, macOS 27.0, *)
 extension CoreAISequentialVLMEngine {
     /// Async sequence of `InferenceOutput` produced by `generate()`.
     public struct GenerationSequence: InferenceOutputSequence {
@@ -983,6 +984,7 @@ extension CoreAISequentialVLMEngine {
 
 // MARK: - Generation Iterator
 
+@available(iOS 27.0, macOS 27.0, *)
 extension CoreAISequentialVLMEngine.GenerationSequence {
     public final class Iterator: AsyncIteratorProtocol {
         public typealias Element = InferenceOutput

@@ -517,6 +517,7 @@ public final class CoreAISequentialEngine: InferenceEngine, @unchecked Sendable 
     }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension CoreAISequentialEngine {
     /// Async sequence of `InferenceOutput` produced by `generate()`.
     public struct GenerationSequence: InferenceOutputSequence {
@@ -551,6 +552,7 @@ extension CoreAISequentialEngine {
     }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension CoreAISequentialEngine.GenerationSequence {
     public final class Iterator: AsyncIteratorProtocol {
         public typealias Element = InferenceOutput

@@ -50,6 +50,7 @@ public protocol InferenceOutputSequence: AsyncSequence<InferenceOutput, any Erro
 /// iterator (or a producer Task) and read by the caller after iteration. A
 /// reference-typed box lets the sequence value, its iterator, and the caller
 /// observe the same slot.
+@available(iOS 27.0, macOS 27.0, *)
 final class StopReasonStore: Sendable {
     private let value = Mutex<StopReason?>(nil)
 
