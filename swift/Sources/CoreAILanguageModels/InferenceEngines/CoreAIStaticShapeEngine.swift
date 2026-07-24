@@ -3,12 +3,14 @@
 // Use of this source code is governed by a BSD-3-clause license that can
 // be found in the LICENSE file or at https://opensource.org/licenses/BSD-3-Clause
 
+#if canImport(CoreAI)  // canImport-CoreAI sim guard: CoreAI is device-only (absent on iOS Simulator SDK)
 import CoreAI
 import CoreAIShared
 import Foundation
 import Synchronization
 
 /// Static-shape inference engine using Core AI models.
+@available(iOS 27.0, macOS 27.0, *)
 public final class StaticShapeEngine: InferenceEngine, @unchecked Sendable {
     public typealias ConfigType = ModelConfig
 
@@ -605,6 +607,7 @@ public final class StaticShapeEngine: InferenceEngine, @unchecked Sendable {
     }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension StaticShapeEngine {
     /// Async sequence of `InferenceOutput` produced by `generate()`.
     ///
@@ -643,6 +646,7 @@ extension StaticShapeEngine {
     }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension StaticShapeEngine.GenerationSequence {
     public struct Iterator: AsyncIteratorProtocol {
         public typealias Element = InferenceOutput
@@ -751,3 +755,4 @@ extension StaticShapeEngine.GenerationSequence {
         }
     }
 }
+#endif  // canImport-CoreAI sim guard

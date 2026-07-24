@@ -3,6 +3,7 @@
 // Use of this source code is governed by a BSD-3-clause license that can
 // be found in the LICENSE file or at https://opensource.org/licenses/BSD-3-Clause
 
+#if canImport(CoreAI)  // canImport-CoreAI sim guard: CoreAI is device-only (absent on iOS Simulator SDK)
 import CoreAI
 import Foundation
 
@@ -26,6 +27,7 @@ public enum GraphNames {
 /// - `dynamic`: Uses `CoreAISequentialEngine` or `CoreAIPipelinedEngine`
 /// - `multiFunctionSegmenter`: Uses `CoreAISegmentationEngine` against an asset
 ///   with `image_encode` / `text_encode` / `detect` graphs (e.g. optimized SAM3).
+@available(iOS 27.0, macOS 27.0, *)
 public enum ModelStructure: Equatable, Sendable, CustomStringConvertible {
     /// Chunked static model with fixed batch size for static-shape execution.
     /// Identified by presence of `extend_*` and `load_embeddings` functions.
@@ -68,6 +70,7 @@ public enum ModelStructure: Equatable, Sendable, CustomStringConvertible {
     /// - `chunkedStatic` → prefer `.neuralEngine`
     /// - `dynamic` → prefer `.gpu` + `expectFrequentReshapes`
     /// - `multiFunctionSegmenter` → prefer `.neuralEngine`
+    @available(iOS 27.0, macOS 27.0, *)
     public var specializationOptions: SpecializationOptions {
         switch self {
         case .chunkedStatic, .multiFunctionSegmenter:
@@ -97,6 +100,7 @@ public enum ModelStructure: Equatable, Sendable, CustomStringConvertible {
 /// ## Thread Safety
 /// `PreparedModelAsset` is `Sendable` and can be safely shared across actor boundaries.
 /// The underlying `AIModel` is thread-safe for read access.
+@available(iOS 27.0, macOS 27.0, *)
 public struct PreparedModel: Sendable {
     /// The pre-loaded and JIT-compiled model.
     public let model: AIModel
@@ -227,3 +231,4 @@ public struct PreparedModel: Sendable {
         return Int(parts[2])
     }
 }
+#endif  // canImport-CoreAI sim guard

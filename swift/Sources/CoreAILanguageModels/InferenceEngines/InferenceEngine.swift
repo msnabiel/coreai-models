@@ -17,6 +17,7 @@ public typealias LogitsScalarType = Float
 
 /// Single step output from `InferenceEngine.generate()`.
 /// Contains the sampled token and optionally raw logits.
+@available(iOS 27.0, macOS 27.0, *)
 public struct InferenceOutput: Sendable {
     public let tokenId: Int32
 
@@ -33,6 +34,7 @@ public struct InferenceOutput: Sendable {
 
 /// Controls what the engine produces and how much.
 /// Struct-based for additive extensibility (future: embeddings, attention maps).
+@available(iOS 27.0, macOS 27.0, *)
 public struct InferenceOptions: Sendable {
     /// Max tokens to generate. Nil = until EOS or context limit.
     public var maxTokens: Int?
@@ -56,6 +58,7 @@ public struct InferenceOptions: Sendable {
 // MARK: - Configuration Data Structures
 
 /// Configuration-specific errors with user-friendly messages
+@available(iOS 27.0, macOS 27.0, *)
 public enum ConfigurationError: Error, LocalizedError {
     case fileNotFound(String)
     case invalidJSON(String, String)
@@ -84,6 +87,7 @@ public enum ConfigurationError: Error, LocalizedError {
 /// Interface for inference engines.
 ///
 /// KV cache is preserved between `generate()` calls. Call `reset()` to clear.
+@available(iOS 27.0, macOS 27.0, *)
 public protocol InferenceEngine: Sendable {
     associatedtype OutputSequence: InferenceOutputSequence
     typealias TokenId = Int32
@@ -148,6 +152,7 @@ public protocol InferenceEngine: Sendable {
     var config: ConfigType { get }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 public protocol InferenceConfiguration: Sendable {
     var maxContextLength: Int { get }
 
@@ -160,6 +165,7 @@ public protocol InferenceConfiguration: Sendable {
     var chunkThreshold: Int { get }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension InferenceConfiguration {
     /// Default prefill chunk size: 512 tokens.
     ///
@@ -180,17 +186,20 @@ extension InferenceConfiguration {
 
 // MARK: - Default Implementations
 
+@available(iOS 27.0, macOS 27.0, *)
 extension InferenceEngine {
     /// Default: supportsLogits is false. Engines that can return per-step
     /// logits (sequential, static-shape) override this to true.
     public var supportsLogits: Bool { false }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension InferenceEngine {
     /// Default: no prefix hits (engine doesn't track history).
     public var lastPrefixHitCount: Int { 0 }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension InferenceEngine {
     /// Default: engine is not busy.
     public var isBusy: Bool { false }
@@ -199,6 +208,7 @@ extension InferenceEngine {
     public func cancel() async throws {}
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension InferenceEngine {
     /// Default no-op implementation of warmup.
     public func warmup(queryLength: Int, sampling: SamplingConfiguration?) async throws {
@@ -206,11 +216,13 @@ extension InferenceEngine {
     }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension InferenceEngine {
     /// Default: processedTokenCount is 0 (engine hasn't processed anything).
     public var processedTokenCount: Int { 0 }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension InferenceEngine {
     /// Default: reset() delegates to reset(to: 0) for full reset.
     public func reset() async throws {
@@ -218,6 +230,7 @@ extension InferenceEngine {
     }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension InferenceEngine {
     /// Default implementation: accepts all sampling configurations.
     ///
@@ -232,6 +245,7 @@ extension InferenceEngine {
 
 // MARK: - Errors
 
+@available(iOS 27.0, macOS 27.0, *)
 public enum InferenceRuntimeError: Error, LocalizedError {
     case functionNotFound(String)
     case modelNotFound(String)
@@ -290,6 +304,7 @@ public enum InferenceRuntimeError: Error, LocalizedError {
 
 // MARK: - Multimodal
 
+#if canImport(CoreAI)  // canImport-CoreAI sim guard: EmbeddedInput is device-only
 /// Engine that supports vision/audio input in addition to text tokens.
 ///
 /// The typical flow:
@@ -298,6 +313,7 @@ public enum InferenceRuntimeError: Error, LocalizedError {
 ///    token sequence and run prefill + decode
 ///
 /// The caller owns the embeddings and decides caching strategy.
+@available(iOS 27.0, macOS 27.0, *)
 public protocol MultimodalInferenceEngine: InferenceEngine {
     /// Encode an image into embeddings suitable for injection into the VLM.
     /// Returns the embedded representation — caller decides whether to cache.
@@ -317,6 +333,7 @@ public protocol MultimodalInferenceEngine: InferenceEngine {
 // TODO: Multi-turn — caller can cache EmbeddedInput across turns and pass it
 // again with the accumulated token context. Engine keeps image in KV cache
 // via reset(to:) preserving the prefill portion.
+#endif
 
 // MARK: - Engine Options
 
@@ -324,6 +341,7 @@ public protocol MultimodalInferenceEngine: InferenceEngine {
 ///
 /// Determines how the KV cache is allocated and managed at runtime.
 /// This is engine-level configuration applicable to any engine that uses KV caching.
+@available(iOS 27.0, macOS 27.0, *)
 public enum KVCacheStrategy: String, Codable, Sendable, CaseIterable {
     /// Auto-select the best strategy based on model capability.
     /// - For models exported with `--dynamic-sized-kvcache-gpu`: uses `growing`

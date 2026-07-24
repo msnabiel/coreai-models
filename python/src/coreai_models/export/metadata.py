@@ -35,6 +35,22 @@ class AIModelMetadataFields:
 # `coreai_models.model_registry`, add a matching entry here.
 _METADATA: dict[str, AIModelMetadataFields] = {
     # ---- LLMs ----
+    "Qwen/Qwen2.5-Coder-0.5B-Instruct": AIModelMetadataFields(
+        author="Qwen Team",
+        license="Apache-2.0",
+        model_description=(
+            "Lyra Mini profile, an iOS Core AI export derived from Qwen2.5-Coder-0.5B-Instruct. "
+            "Source: https://huggingface.co/Qwen/Qwen2.5-Coder-0.5B-Instruct"
+        ),
+    ),
+    "Qwen/Qwen2.5-Coder-1.5B-Instruct": AIModelMetadataFields(
+        author="Qwen Team",
+        license="Apache-2.0",
+        model_description=(
+            "Lyra Standard profile, an iOS Core AI export derived from Qwen2.5-Coder-1.5B-Instruct. "
+            "Source: https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct"
+        ),
+    ),
     "Qwen/Qwen2.5-1.5B-Instruct": AIModelMetadataFields(
         author="Qwen Team",
         license="Apache-2.0",

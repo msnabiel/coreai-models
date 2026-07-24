@@ -5,6 +5,7 @@
 
 // Foundation Models protocol implementation for VLM bundles.
 
+#if canImport(CoreAI)  // canImport-CoreAI sim guard: CoreAI is device-only (absent on iOS Simulator SDK)
 import CoreAI
 import CoreGraphics
 import Foundation
@@ -25,6 +26,7 @@ import Tokenizers
 ///     }
 /// }
 /// ```
+@available(iOS 27.0, macOS 27.0, *)
 public struct CoreAIVisionLanguageModel: LanguageModel {
     public typealias Executor = CoreAIVLMExecutor
 
@@ -87,6 +89,7 @@ public struct CoreAIVisionLanguageModel: LanguageModel {
 
 // MARK: - CoreAIVLMExecutor
 
+@available(iOS 27.0, macOS 27.0, *)
 public struct CoreAIVLMExecutor: LanguageModelExecutor {
     public typealias Model = CoreAIVisionLanguageModel
 
@@ -241,3 +244,5 @@ public struct CoreAIVLMExecutor: LanguageModelExecutor {
         return tokenizer.encode(text: chatText).map { Int32($0) }
     }
 }
+
+#endif

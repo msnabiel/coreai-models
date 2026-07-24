@@ -3,6 +3,7 @@
 // Use of this source code is governed by a BSD-3-clause license that can
 // be found in the LICENSE file or at https://opensource.org/licenses/BSD-3-Clause
 
+#if canImport(CoreAI)  // canImport-CoreAI sim guard: CoreAILanguageModel is device-only
 import CoreAIShared
 import Foundation
 import Synchronization
@@ -10,6 +11,7 @@ import Synchronization
 // MARK: - Resource management
 
 /// Owns the load / unload lifecycle of a single inference engine.
+@available(iOS 27.0, macOS 27.0, *)
 final class ModelResources: ResourceManaging {
     private struct State {
         var loaded: (any InferenceEngine)?
@@ -161,3 +163,4 @@ final class ModelResources: ResourceManaging {
         return engine
     }
 }
+#endif

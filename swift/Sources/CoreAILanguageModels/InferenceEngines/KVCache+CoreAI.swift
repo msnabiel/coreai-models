@@ -3,6 +3,7 @@
 // Use of this source code is governed by a BSD-3-clause license that can
 // be found in the LICENSE file or at https://opensource.org/licenses/BSD-3-Clause
 
+#if canImport(CoreAI)  // canImport-CoreAI sim guard: CoreAI is device-only (absent on iOS Simulator SDK)
 import CoreAI
 import CoreAIShared
 import Foundation
@@ -13,6 +14,7 @@ import MetalPerformanceShaders
 
 /// Binding-ready tensor reference for Core AI inference.
 /// Stores the Metal buffer alongside its shape/strides for RawView construction.
+@available(iOS 27.0, macOS 27.0, *)
 struct TensorBinding {
     let metalBuffer: MTLBuffer
     private(set) var shape: [Int]
@@ -42,6 +44,7 @@ struct TensorBinding {
 ///
 /// Conforming types manage key and value cache buffers for transformer inference.
 /// The protocol supports both static (fixed-size) and dynamic (growing) strategies.
+@available(iOS 27.0, macOS 27.0, *)
 protocol CoreAIKVCache {
     /// Current allocated capacity (sequence length dimension).
     var currentCapacity: Int { get }
@@ -83,6 +86,7 @@ protocol CoreAIKVCache {
 // MARK: - CoreAIKVCache Factory
 
 /// Factory for creating KV cache instances based on strategy.
+@available(iOS 27.0, macOS 27.0, *)
 enum KVCacheFactory {
     /// Detect if the model supports dynamic KV cache sizing.
     ///
@@ -205,6 +209,7 @@ enum KVCacheFactory {
 /// - Memory is not a concern
 /// - Predictable allocation is required
 /// - Maximum throughput is needed (no growth stalls)
+@available(iOS 27.0, macOS 27.0, *)
 struct StaticKVCache: CoreAIKVCache {
     let currentCapacity: Int
 
@@ -310,6 +315,7 @@ struct StaticKVCache: CoreAIKVCache {
 /// - Memory efficiency is important
 /// - Most conversations are shorter than max context
 /// - Occasional stalls are acceptable
+@available(iOS 27.0, macOS 27.0, *)
 struct GrowingKVCache: CoreAIKVCache {
     private(set) var currentCapacity: Int
 
@@ -553,6 +559,7 @@ struct GrowingKVCache: CoreAIKVCache {
 
 // MARK: - ScalarType Extension
 
+@available(iOS 27.0, macOS 27.0, *)
 extension NDArray.ScalarType {
     /// Byte size for Core AI scalar types.
     var byteSize: Int {
@@ -592,3 +599,4 @@ extension NDArray.ScalarType {
         }
     }
 }
+#endif  // canImport-CoreAI sim guard

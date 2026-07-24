@@ -6,6 +6,7 @@
 import Synchronization
 
 /// Why token generation terminated.
+@available(iOS 27.0, macOS 27.0, *)
 public enum StopReason: Sendable, Equatable {
     /// The maximum token limit was reached.
     case maxTokens
@@ -33,6 +34,7 @@ public enum StopReason: Sendable, Equatable {
 ///
 /// Read `stopReason` after the `for try await` loop exits; it is guaranteed
 /// non-nil once iteration has run to completion.
+@available(iOS 27.0, macOS 27.0, *)
 public protocol InferenceOutputSequence: AsyncSequence<InferenceOutput, any Error> {
     /// Why generation stopped. Nil while the stream is still active.
     var stopReason: StopReason? { get }
@@ -48,6 +50,7 @@ public protocol InferenceOutputSequence: AsyncSequence<InferenceOutput, any Erro
 /// iterator (or a producer Task) and read by the caller after iteration. A
 /// reference-typed box lets the sequence value, its iterator, and the caller
 /// observe the same slot.
+@available(iOS 27.0, macOS 27.0, *)
 final class StopReasonStore: Sendable {
     private let value = Mutex<StopReason?>(nil)
 

@@ -12,6 +12,7 @@ import os.signpost
 ///
 /// Handles text decoding, stop sequence detection, and Instruments profiling.
 /// Uses `InferenceEngine.generate()` for the underlying token stream.
+@available(iOS 27.0, macOS 27.0, *)
 public struct VanillaDecodingStrategy: DecodingStrategy {
     public init() {}
 
@@ -82,6 +83,7 @@ public struct VanillaDecodingStrategy: DecodingStrategy {
 
 // MARK: - VanillaDecodedSequence
 
+@available(iOS 27.0, macOS 27.0, *)
 extension VanillaDecodingStrategy {
     /// Async sequence of `GenerationResult` produced by `decode()`.
     public struct VanillaDecodedSequence: AsyncSequence {
@@ -119,6 +121,7 @@ extension VanillaDecodingStrategy {
     }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension VanillaDecodingStrategy.VanillaDecodedSequence {
     public final class Iterator: AsyncIteratorProtocol {
         public typealias Element = GenerationResult

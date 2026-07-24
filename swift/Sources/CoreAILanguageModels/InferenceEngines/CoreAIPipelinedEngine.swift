@@ -3,6 +3,7 @@
 // Use of this source code is governed by a BSD-3-clause license that can
 // be found in the LICENSE file or at https://opensource.org/licenses/BSD-3-Clause
 
+#if canImport(CoreAI)  // canImport-CoreAI sim guard: CoreAI is device-only (absent on iOS Simulator SDK)
 import CoreAI
 import CoreAIShared
 import Foundation
@@ -41,6 +42,7 @@ private let minimumMPSNDArrayBufferSize = 64
 /// - Pipeline-depth-matched buffer rotation for CPU/GPU overlap
 /// - Growing KV cache with pipelined expansion
 /// - All tensors are owned MTLBuffers — Core AI never allocates/frees them
+@available(iOS 27.0, macOS 27.0, *)
 final class CoreAIPipelinedEngine: InferenceEngine, Sendable {
     typealias ConfigType = ModelConfig
 
@@ -328,6 +330,7 @@ final class CoreAIPipelinedEngine: InferenceEngine, Sendable {
 /// Class, not actor: `release()` runs synchronously from the Metal callback —
 /// an actor would force `Task { await release() }` with ordering ambiguity.
 /// `internal` (not `private`) so `PipelineGateTests` can reach it.
+@available(iOS 27.0, macOS 27.0, *)
 final class PipelineGate: Sendable {
     private struct State: Sendable {
         var inFlight: Int = 0
@@ -398,6 +401,7 @@ final class PipelineGate: Sendable {
 
 // MARK: - Engine Implementation
 
+@available(iOS 27.0, macOS 27.0, *)
 private struct EngineImpl: ~Copyable {
     var vocabSize: Int { config.vocabSize }
 
@@ -1226,6 +1230,7 @@ private struct EngineImpl: ~Copyable {
     }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension CoreAIPipelinedEngine {
     /// Async sequence of `InferenceOutput` produced by `generate()`.
     ///
@@ -1251,6 +1256,7 @@ extension CoreAIPipelinedEngine {
     }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension CoreAIPipelinedEngine.GenerationSequence {
     public struct Iterator: AsyncIteratorProtocol {
         public typealias Element = InferenceOutput
@@ -1274,3 +1280,4 @@ extension CoreAIPipelinedEngine.GenerationSequence {
         }
     }
 }
+#endif  // canImport-CoreAI sim guard

@@ -3,6 +3,7 @@
 // Use of this source code is governed by a BSD-3-clause license that can
 // be found in the LICENSE file or at https://opensource.org/licenses/BSD-3-Clause
 
+#if canImport(CoreAI)  // canImport-CoreAI sim guard: CoreAI is device-only (absent on iOS Simulator SDK)
 import CoreAI
 import CoreAIShared
 import Foundation
@@ -15,6 +16,7 @@ import Foundation
 ///
 /// Call ``createEngine(config:modelURL:options:)`` to create the engine, and pass an
 /// ``EngineOptions`` value to override the variant or customize the KV cache.
+@available(iOS 27.0, macOS 27.0, *)
 public struct EngineFactory: Sendable {
     /// Creates an inference engine for a model, selecting the variant from the model's structure.
     ///
@@ -230,6 +232,7 @@ public struct EngineFactory: Sendable {
 
 /// Options that customize how the factory creates an inference engine and how
 /// the engine manages its KV cache.
+@available(iOS 27.0, macOS 27.0, *)
 public struct EngineOptions: Sendable {
     /// A specific engine variant name that overrides auto-detection.
     ///
@@ -292,6 +295,7 @@ public struct EngineOptions: Sendable {
     }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension EngineFactory {
     /// Determines the appropriate engine variant based on model structure.
     private enum Variant: String, Sendable, CaseIterable {
@@ -305,3 +309,4 @@ extension EngineFactory {
         case staticShape = "static-shape"
     }
 }
+#endif  // canImport-CoreAI sim guard

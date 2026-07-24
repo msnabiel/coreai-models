@@ -10,6 +10,7 @@ import Tokenizers
 // MARK: - Text Generator
 
 /// Main orchestrator that coordinates inference engine, sampling strategy, and decoding strategy
+@available(iOS 27.0, macOS 27.0, *)
 public class TextGenerator {
     private let inferenceEngine: any InferenceEngine
     private let samplingConfiguration: SamplingConfiguration
@@ -169,6 +170,7 @@ public class TextGenerator {
 // MARK: - Text Generator Builder
 
 /// Builder pattern for creating TextGenerator instances with different configurations
+@available(iOS 27.0, macOS 27.0, *)
 public class TextGeneratorBuilder {
     private var inferenceEngine: (any InferenceEngine)?
     private var samplingConfiguration: SamplingConfiguration = .greedy
@@ -240,6 +242,7 @@ public class TextGeneratorBuilder {
 // MARK: - Configuration Presets
 
 /// Predefined configurations for common use cases
+@available(iOS 27.0, macOS 27.0, *)
 public struct TextGeneratorPresets {
     /// Fast generation with greedy sampling
     public static func fastGeneration() -> (SamplingConfiguration, DecodingType, DecodingParameters) {
@@ -268,6 +271,7 @@ public struct TextGeneratorPresets {
 ///
 /// Use this enum to specify whether input text should be processed as raw text
 /// or formatted as a prompt with template application.
+@available(iOS 27.0, macOS 27.0, *)
 public enum Input: Sendable {
     /// Raw text input without any template formatting
     /// - Parameter String: The unformatted text to process
@@ -285,6 +289,7 @@ public enum Input: Sendable {
 // MARK: - Prompt Utilities
 
 /// Utility functions for prompt formatting
+@available(iOS 27.0, macOS 27.0, *)
 public struct PromptUtils {
     /// Apply chat template using tokenizer's built-in functionality
     /// This method tries to use the tokenizer's applyChatTemplate method, falling back to direct encoding
@@ -312,6 +317,7 @@ public struct PromptUtils {
 
 // MARK: - Errors
 
+@available(iOS 27.0, macOS 27.0, *)
 public enum TextGeneratorError: Error, LocalizedError {
     case missingTokenizer
     case invalidConfiguration(String)
@@ -328,6 +334,7 @@ public enum TextGeneratorError: Error, LocalizedError {
 
 // MARK: - Convenience Extensions
 
+@available(iOS 27.0, macOS 27.0, *)
 extension TextGenerator {
     /// Quick generation with default parameters
     public func quickGenerate(_ input: Input) async throws -> String {

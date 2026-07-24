@@ -3,6 +3,7 @@
 // Use of this source code is governed by a BSD-3-clause license that can
 // be found in the LICENSE file or at https://opensource.org/licenses/BSD-3-Clause
 
+#if canImport(CoreAI)  // canImport-CoreAI sim guard: CoreAI is device-only (absent on iOS Simulator SDK)
 import CoreAI
 import Foundation
 
@@ -11,6 +12,7 @@ import Foundation
 /// Used by multimodal engines to pass vision/audio embeddings into the
 /// language model. The engine performs scatter-merge: replacing placeholder
 /// token positions with these embeddings before the first forward pass.
+@available(iOS 27.0, macOS 27.0, *)
 public struct EmbeddedInput: Sendable {
     /// The embedding tensor, shape [batch, seq_len, hidden_dim].
     /// Scalar type matches the LLM's expected input (float16, bFloat16, etc.).
@@ -35,3 +37,5 @@ public struct EmbeddedInput: Sendable {
     // TODO: Multi-turn support — allow multiple image regions per input,
     // persistent across generate() calls (keep in KV cache on reset).
 }
+
+#endif

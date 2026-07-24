@@ -3,6 +3,7 @@
 // Use of this source code is governed by a BSD-3-clause license that can
 // be found in the LICENSE file or at https://opensource.org/licenses/BSD-3-Clause
 
+#if canImport(CoreAI)  // canImport-CoreAI sim guard: CoreAI is device-only (absent on iOS Simulator SDK)
 import CoreAI
 import CoreAIShared
 import Foundation
@@ -11,6 +12,7 @@ import Synchronization
 // MARK: - Prefill Strategy
 
 /// Determines the optimal prefill strategy based on prompt size.
+@available(iOS 27.0, macOS 27.0, *)
 enum PrefillStrategy {
     case chunked(chunkSize: Int)
     case wholeBatch
@@ -30,6 +32,7 @@ enum PrefillStrategy {
 ///
 /// KV cache NDArrays start small (256 tokens) and grow dynamically with 2× expansion.
 /// Passed as `states` on every forward pass; the model graph updates them in-place.
+@available(iOS 27.0, macOS 27.0, *)
 public final class CoreAISequentialEngine: InferenceEngine, @unchecked Sendable {
     public typealias ConfigType = ModelConfig
 
@@ -514,6 +517,7 @@ public final class CoreAISequentialEngine: InferenceEngine, @unchecked Sendable 
     }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension CoreAISequentialEngine {
     /// Async sequence of `InferenceOutput` produced by `generate()`.
     public struct GenerationSequence: InferenceOutputSequence {
@@ -548,6 +552,7 @@ extension CoreAISequentialEngine {
     }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension CoreAISequentialEngine.GenerationSequence {
     public final class Iterator: AsyncIteratorProtocol {
         public typealias Element = InferenceOutput
@@ -682,3 +687,4 @@ extension CoreAISequentialEngine.GenerationSequence {
         }
     }
 }
+#endif  // canImport-CoreAI sim guard
