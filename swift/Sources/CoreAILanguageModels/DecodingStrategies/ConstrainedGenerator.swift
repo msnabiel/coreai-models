@@ -234,6 +234,7 @@ public struct ConstrainedGenerator: DecodingStrategy {
 
 // MARK: - ConstrainedGeneratedSequence
 
+@available(iOS 27.0, macOS 27.0, *)
 extension ConstrainedGenerator {
     /// Async sequence that emits exactly one `GenerationResult` containing the complete JSON output.
     public struct ConstrainedGeneratedSequence: AsyncSequence {
@@ -264,6 +265,7 @@ extension ConstrainedGenerator {
     }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension ConstrainedGenerator.ConstrainedGeneratedSequence {
     public struct Iterator: AsyncIteratorProtocol {
         public typealias Element = GenerationResult
