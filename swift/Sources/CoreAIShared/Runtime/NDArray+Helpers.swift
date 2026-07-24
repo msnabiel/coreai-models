@@ -13,6 +13,7 @@ import Foundation
 ///
 /// Uses `NDArrayDescriptor.resolvingDynamicDimensions().preferredStrides` to get
 /// framework-blessed strides that respect hardware alignment constraints.
+@available(iOS 27.0, macOS 27.0, *)
 public func resolvedStrides(descriptor: NDArrayDescriptor, shape: [Int]) throws -> [Int] {
     let resolved = descriptor.resolvingDynamicDimensions(shape)
     return resolved.preferredStrides
@@ -23,6 +24,7 @@ public func resolvedStrides(descriptor: NDArrayDescriptor, shape: [Int]) throws 
 /// Product of the elements of a Span<Int> — used to compute the flat
 /// capacity from an NDArray shape. `Span` doesn't conform to `Sequence`
 /// (non-escapable by design), so `.reduce` isn't available.
+@available(iOS 27.0, macOS 27.0, *)
 extension Span where Element == Int {
     var product: Int {
         var result = 1
@@ -36,6 +38,7 @@ extension Span where Element == Int {
 // MARK: - NDArray Fill / Read Helpers
 
 /// Fill an NDArray from a collection of elements.
+@available(iOS 27.0, macOS 27.0, *)
 public func fillNDArray<T: BitwiseCopyable>(
     _ array: inout NDArray, as type: T.Type, with elements: some Collection<T>
 ) {
@@ -47,6 +50,7 @@ public func fillNDArray<T: BitwiseCopyable>(
 ///
 /// - Precondition: `count` must not exceed the number of elements in the
 ///   array (derived from the shape).
+@available(iOS 27.0, macOS 27.0, *)
 public func fillNDArray<T: BitwiseCopyable>(
     _ array: inout NDArray, as type: T.Type, count: Int, using generator: (Int) -> T
 ) {
@@ -64,6 +68,7 @@ public func fillNDArray<T: BitwiseCopyable>(
 ///
 /// - Precondition: `count` must not exceed the number of elements in the
 ///   array (derived from the shape).
+@available(iOS 27.0, macOS 27.0, *)
 public func readNDArray<T: BitwiseCopyable>(
     _ array: NDArray, as type: T.Type, count: Int
 ) -> [T] {
@@ -82,6 +87,7 @@ public func readNDArray<T: BitwiseCopyable>(
 /// Flatten an NDArray output into `[Float]`, branching on its own scalar type.
 /// Output dtype can differ from the model's input dtype, so always inspect the array
 /// rather than threading an `isFloat16` flag from input descriptors.
+@available(iOS 27.0, macOS 27.0, *)
 public func flattenAsFloat(_ array: NDArray) -> [Float] {
     switch array.scalarType {
     #if !((os(macOS) || targetEnvironment(macCatalyst)) && arch(x86_64))
@@ -99,6 +105,7 @@ public func flattenAsFloat(_ array: NDArray) -> [Float] {
 ///
 /// Fast path skips per-element stride arithmetic when the array is already
 /// row-major contiguous (the common case for Core AI outputs).
+@available(iOS 27.0, macOS 27.0, *)
 public func flattenNDArray<T: BinaryFloatingPoint & BitwiseCopyable>(
     _ array: NDArray, as type: T.Type
 ) -> [Float] {
