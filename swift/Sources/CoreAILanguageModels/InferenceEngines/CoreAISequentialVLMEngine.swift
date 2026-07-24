@@ -942,8 +942,6 @@ public final class CoreAISequentialVLMEngine: MultimodalInferenceEngine, @unchec
     }
 }
 
-#endif
-
 // MARK: - Generation Sequence
 
 extension CoreAISequentialVLMEngine {
@@ -980,6 +978,8 @@ extension CoreAISequentialVLMEngine {
         }
     }
 }
+
+#endif
 
 // MARK: - Generation Iterator
 
