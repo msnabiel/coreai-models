@@ -3,6 +3,7 @@
 // Use of this source code is governed by a BSD-3-clause license that can
 // be found in the LICENSE file or at https://opensource.org/licenses/BSD-3-Clause
 
+#if canImport(CoreAI)  // canImport-CoreAI sim guard: CoreAI is device-only (absent on iOS Simulator SDK)
 import Accelerate
 import CoreAI
 import CoreAIShared
@@ -294,3 +295,4 @@ public struct SD3Pipeline: DiffusionPipeline {
     private static let jointAttentionDim = 4096  // MMDiT channel dim
     private static let pooledProjectionDim = 2048  // 768 + 1280
 }
+#endif  // canImport-CoreAI sim guard

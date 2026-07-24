@@ -3,6 +3,7 @@
 // Use of this source code is governed by a BSD-3-clause license that can
 // be found in the LICENSE file or at https://opensource.org/licenses/BSD-3-Clause
 
+#if canImport(CoreAI)  // canImport-CoreAI sim guard: CoreAI is device-only (absent on iOS Simulator SDK)
 import CoreAI
 import Foundation
 
@@ -137,3 +138,4 @@ public func flattenNDArray<T: BinaryFloatingPoint & BitwiseCopyable>(
     }
     return result
 }
+#endif  // canImport-CoreAI sim guard
