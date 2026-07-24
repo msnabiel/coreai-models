@@ -140,6 +140,7 @@ struct FullTokenLogitsJSON: Codable {
 // MARK: - Logits Writer
 
 /// Utility for saving logits in various formats
+@available(iOS 27.0, macOS 27.0, *)
 public struct LogitsWriter {
     /// Escape special characters for display
     private static func escapeForDisplay(_ text: String) -> String {
