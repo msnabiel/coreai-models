@@ -290,6 +290,7 @@ public enum InferenceRuntimeError: Error, LocalizedError {
 
 // MARK: - Multimodal
 
+#if canImport(CoreAI)  // canImport-CoreAI sim guard: EmbeddedInput is device-only
 /// Engine that supports vision/audio input in addition to text tokens.
 ///
 /// The typical flow:
@@ -317,6 +318,7 @@ public protocol MultimodalInferenceEngine: InferenceEngine {
 // TODO: Multi-turn — caller can cache EmbeddedInput across turns and pass it
 // again with the accumulated token context. Engine keeps image in KV cache
 // via reset(to:) preserving the prefill portion.
+#endif
 
 // MARK: - Engine Options
 
