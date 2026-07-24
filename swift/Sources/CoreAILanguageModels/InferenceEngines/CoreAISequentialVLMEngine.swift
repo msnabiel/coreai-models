@@ -979,8 +979,6 @@ extension CoreAISequentialVLMEngine {
     }
 }
 
-#endif
-
 // MARK: - Generation Iterator
 
 extension CoreAISequentialVLMEngine.GenerationSequence {
@@ -1134,3 +1132,5 @@ extension CoreAISequentialVLMEngine.GenerationSequence {
         }
     }
 }
+
+#endif
