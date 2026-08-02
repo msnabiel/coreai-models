@@ -9,6 +9,12 @@
 KEY_CACHE_NAME = "keyCache"
 VALUE_CACHE_NAME = "valueCache"
 
+# Per-token scale cache names for optional int8 KV cache quantization (macOS).
+# Only present in the exported AIProgram when quantize_kv_cache is enabled —
+# existing 2-state (float16) Swift runtime engines are unaffected by default.
+KEY_SCALE_CACHE_NAME = "keyScaleCache"
+VALUE_SCALE_CACHE_NAME = "valueScaleCache"
+
 # Trace-time KV cache sequence length. Used only for export/quantization tracing
 # to bound peak memory; at inference the actual cache size is determined
 # dynamically.

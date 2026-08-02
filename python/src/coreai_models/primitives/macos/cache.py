@@ -20,9 +20,22 @@ class KVCache:
         self: Self,
         k_cache: torch.Tensor,
         v_cache: torch.Tensor,
+        k_scale: torch.Tensor | None = None,
+        v_scale: torch.Tensor | None = None,
     ):
+        """
+        Args:
+            k_cache, v_cache: KV cache tensors, float16 or (when k_scale/v_scale
+                are also given) int8.
+            k_scale, v_scale: Optional per-(layer, kv_head, token) float16 scale
+                tensors of shape (n_layers, 1, n_kv_heads, max_seq_len, 1). When
+                given, k_cache/v_cache are treated as int8 and dequantized on
+                read; when omitted, k_cache/v_cache are used directly as float16.
+        """
         self._k_cache = k_cache
         self._v_cache = v_cache
+        self._k_scale = k_scale
+        self._v_scale = v_scale
 
     @classmethod
     def seq_len_dim(cls) -> int:
@@ -52,6 +65,32 @@ class KVCache:
         k_cache = torch.zeros(n_layers, 1, n_kv_heads, max_seq_len, head_dim, dtype=dtype)
         v_cache = torch.zeros(n_layers, 1, n_kv_heads, max_seq_len, head_dim, dtype=dtype)
         return k_cache, v_cache
+
+    @classmethod
+    def create_quantized_cache_tensors(
+        cls,
+        config,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Create zero-initialized int8 KV cache tensors + float16 per-token-per-head scales.
+
+        Returns:
+            (k_cache, v_cache, k_scale, v_scale) where k_cache/v_cache have shape
+            (n_layers, 1, n_kv_heads, max_seq_len, head_dim) dtype int8, and
+            k_scale/v_scale have shape (n_layers, 1, n_kv_heads, max_seq_len, 1)
+            dtype float16.
+        """
+        n_kv_heads = config.num_key_value_heads
+        n_layers = config.num_hidden_layers
+        max_seq_len = config.max_position_embeddings
+        if hasattr(config, "head_dim") and config.head_dim is not None:
+            head_dim = config.head_dim
+        else:
+            head_dim = config.hidden_size // config.num_attention_heads
+        k_cache = torch.zeros(n_layers, 1, n_kv_heads, max_seq_len, head_dim, dtype=torch.int8)
+        v_cache = torch.zeros(n_layers, 1, n_kv_heads, max_seq_len, head_dim, dtype=torch.int8)
+        k_scale = torch.ones(n_layers, 1, n_kv_heads, max_seq_len, 1, dtype=torch.float16)
+        v_scale = torch.ones(n_layers, 1, n_kv_heads, max_seq_len, 1, dtype=torch.float16)
+        return k_cache, v_cache, k_scale, v_scale
 
     @classmethod
     def from_dimensions(
@@ -117,6 +156,19 @@ class KVCache:
         layer_index = torch.tensor((layer_idx,), dtype=torch.int32, device=device)
         layer_index_end = torch.tensor((layer_idx + 1,), dtype=torch.int32, device=device)
 
+        if self._k_scale is not None:
+            return self._update_and_fetch_quantized(
+                layer_idx,
+                layer_index,
+                layer_index_end,
+                offset,
+                seq_len,
+                k,
+                v,
+                cross_device,
+                compute_device,
+            )
+
         # update k
         mutable_slice_update(
             x=self._k_cache,
@@ -170,6 +222,75 @@ class KVCache:
         v = self._v_cache.narrow(0, layer_idx, 1).narrow(-2, 0, seq_len)
         k_out = k.squeeze(0)
         v_out = v.squeeze(0)
+        if cross_device:
+            return k_out.to(compute_device), v_out.to(compute_device)
+        return k_out, v_out
+
+    def _update_and_fetch_quantized(
+        self: Self,
+        layer_idx: int,
+        layer_index: torch.Tensor,
+        layer_index_end: torch.Tensor,
+        offset: int,
+        seq_len: int,
+        k: torch.Tensor,
+        v: torch.Tensor,
+        cross_device: bool,
+        compute_device: torch.device,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Int8 KV cache path: quantize per (token, kv_head) before writing, dequantize on read.
+
+        k, v shape: (batch=1, n_kv_heads, query_len, head_dim). One scale is
+        computed per (kv_head, token) by reducing over batch and head_dim, so
+        each head keeps its own dynamic range instead of sharing one scale
+        across all heads.
+        """
+        device = self._k_cache.device
+
+        k_scale_val = k.float().abs().amax(dim=(0, 3), keepdim=True).clamp(min=1e-6) / 127.0
+        v_scale_val = v.float().abs().amax(dim=(0, 3), keepdim=True).clamp(min=1e-6) / 127.0
+        q_k = (k.float() / k_scale_val).clamp(-127, 127).to(torch.int8)
+        q_v = (v.float() / v_scale_val).clamp(-127, 127).to(torch.int8)
+
+        zero = torch.tensor((0,), dtype=torch.int32, device=device)
+        offset_t = torch.tensor((offset,), dtype=torch.int32, device=device)
+        cache_begin = torch.cat([layer_index, zero, zero, offset_t, zero])
+        cache_end = torch.cat(
+            [
+                layer_index_end,
+                torch.tensor((self._k_cache.size(1),), dtype=torch.int32, device=device),
+                torch.tensor((self._k_cache.size(2),), dtype=torch.int32, device=device),
+                torch.tensor((offset + k.size(2),), dtype=torch.int32, device=device),
+                torch.tensor((self._k_cache.size(4),), dtype=torch.int32, device=device),
+            ]
+        )
+        mutable_slice_update(x=self._k_cache, update=q_k.unsqueeze(0), begin=cache_begin, end=cache_end)
+        mutable_slice_update(x=self._v_cache, update=q_v.unsqueeze(0), begin=cache_begin, end=cache_end)
+
+        scale_begin = torch.cat([layer_index, zero, zero, offset_t, zero])
+        scale_end = torch.cat(
+            [
+                layer_index_end,
+                torch.tensor((self._k_scale.size(1),), dtype=torch.int32, device=device),
+                torch.tensor((self._k_scale.size(2),), dtype=torch.int32, device=device),
+                torch.tensor((offset + k.size(2),), dtype=torch.int32, device=device),
+                torch.tensor((self._k_scale.size(4),), dtype=torch.int32, device=device),
+            ]
+        )
+        mutable_slice_update(
+            x=self._k_scale, update=k_scale_val.to(torch.float16).unsqueeze(0), begin=scale_begin, end=scale_end
+        )
+        mutable_slice_update(
+            x=self._v_scale, update=v_scale_val.to(torch.float16).unsqueeze(0), begin=scale_begin, end=scale_end
+        )
+
+        k_q = self._k_cache.narrow(0, layer_idx, 1).narrow(-2, 0, seq_len)
+        v_q = self._v_cache.narrow(0, layer_idx, 1).narrow(-2, 0, seq_len)
+        k_s = self._k_scale.narrow(0, layer_idx, 1).narrow(-2, 0, seq_len)
+        v_s = self._v_scale.narrow(0, layer_idx, 1).narrow(-2, 0, seq_len)
+
+        k_out = (k_q.to(torch.float16) * k_s).squeeze(0)
+        v_out = (v_q.to(torch.float16) * v_s).squeeze(0)
         if cross_device:
             return k_out.to(compute_device), v_out.to(compute_device)
         return k_out, v_out
