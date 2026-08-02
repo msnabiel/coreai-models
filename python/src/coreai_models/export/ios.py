@@ -303,6 +303,14 @@ async def _convert_to_coreai(
     cache_len = 64
     while cache_len <= max_context_length:
         for q_len in query_lengths:
+            # A (cache_len, q_len) pair is only ever selectable by the Swift
+            # shape selector when cache_len >= q_len (it requires
+            # maxContextLength >= currentSeqLength + querySize, and
+            # currentSeqLength can be as low as 0). Skipping unreachable
+            # pairs avoids compiling AIProgram function variants that can
+            # never be selected at runtime — pure ROM/build-time waste.
+            if cache_len < q_len:
+                continue
             forward_static_cfg[f'"{cache_len}_{q_len}"'] = {
                 TRANSFORMER_INPUT_NAME: (1, q_len, 1, hidden_size),
                 POSITION_IDS_INPUT_NAME: (1, q_len),
