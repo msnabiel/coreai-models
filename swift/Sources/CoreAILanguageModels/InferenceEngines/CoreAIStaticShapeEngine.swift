@@ -21,6 +21,8 @@ public final class StaticShapeEngine: InferenceEngine, @unchecked Sendable {
     private static let logitsOutputName = "out_logits"
     private static let keyCacheName = "key_cache"
     private static let valueCacheName = "value_cache"
+    private static let keyCacheScaleName = "key_scale_cache"
+    private static let valueCacheScaleName = "value_scale_cache"
 
     public var vocabSize: Int { config.vocabSize }
 
@@ -46,6 +48,10 @@ public final class StaticShapeEngine: InferenceEngine, @unchecked Sendable {
     // Fixed size caches shared across all decoding functions.
     private var keyCache: NDArray
     private var valueCache: NDArray
+
+    // Per-token scale caches for int8 KV quantization (nil for float16 models).
+    private var keyCacheScale: NDArray?
+    private var valueCacheScale: NDArray?
 
     // Number of tokens already processed in the current sequence.
     public private(set) var processedTokenCount: Int = 0
@@ -126,6 +132,20 @@ public final class StaticShapeEngine: InferenceEngine, @unchecked Sendable {
                 "No KV cache state descriptors found — cannot allocate cache buffers")
         }
 
+        // Allocate per-token scale caches for int8 KV quantization (optional).
+        if case .ndArray(let keyCacheScaleDescriptor) = largestExtendDescriptor.stateDescriptor(of: Self.keyCacheScaleName),
+            case .ndArray(let valueCacheScaleDescriptor) = largestExtendDescriptor.stateDescriptor(of: Self.valueCacheScaleName)
+        {
+            self.keyCacheScale = NDArray(descriptor: keyCacheScaleDescriptor)
+            self.valueCacheScale = NDArray(descriptor: valueCacheScaleDescriptor)
+            CLILogger.log(
+                "KV scale caches allocated: key \(keyCacheScaleDescriptor.minimumByteCount) bytes, value \(valueCacheScaleDescriptor.minimumByteCount) bytes (IOSurface)"
+            )
+        } else {
+            self.keyCacheScale = nil
+            self.valueCacheScale = nil
+        }
+
         CLILogger.log("Engine initialized")
     }
 
@@ -162,18 +182,30 @@ public final class StaticShapeEngine: InferenceEngine, @unchecked Sendable {
                 "Function '\(functionName)' missing required output '\(logitsOutputName)'. "
                     + "Available outputs: \(descriptor.outputNames)")
         }
-        if descriptor.stateNames.count == 1 {
+        // Valid state counts: 0 (cache-free), 2 (float16 KV), 4 (int8 KV + per-token scales).
+        let stateCount = descriptor.stateNames.count
+        if stateCount == 1 || stateCount == 3 {
             throw InferenceRuntimeError.invalidState(
-                "Function '\(functionName)' has exactly 1 state (\(descriptor.stateNames)) "
-                    + "— expected 0 (internal to model) or 2 (\(keyCacheName), \(valueCacheName))")
+                "Function '\(functionName)' has \(stateCount) states (\(descriptor.stateNames)) "
+                    + "— expected 0, 2 (\(keyCacheName)/\(valueCacheName)), "
+                    + "or 4 (+ \(keyCacheScaleName)/\(valueCacheScaleName))")
         }
-        if descriptor.stateNames.count >= 2 {
+        if stateCount >= 2 {
             guard descriptor.stateNames.contains(keyCacheName),
                 descriptor.stateNames.contains(valueCacheName)
             else {
                 throw InferenceRuntimeError.invalidState(
                     "Function '\(functionName)' has states \(descriptor.stateNames) "
                         + "but missing required '\(keyCacheName)' and/or '\(valueCacheName)'")
+            }
+        }
+        if stateCount == 4 {
+            guard descriptor.stateNames.contains(keyCacheScaleName),
+                descriptor.stateNames.contains(valueCacheScaleName)
+            else {
+                throw InferenceRuntimeError.invalidState(
+                    "Function '\(functionName)' has 4 states \(descriptor.stateNames) "
+                        + "but missing '\(keyCacheScaleName)' and/or '\(valueCacheScaleName)'")
             }
         }
     }
@@ -427,6 +459,19 @@ public final class StaticShapeEngine: InferenceEngine, @unchecked Sendable {
             var states = InferenceFunction.MutableViews()
             states.insert(keyCacheView, for: Self.keyCacheName)
             states.insert(valueCacheView, for: Self.valueCacheName)
+
+            // Bind per-token scale caches when the model uses int8 KV quantization.
+            if let kScale = keyCacheScale, let vScale = valueCacheScale,
+                desc.stateNames.contains(Self.keyCacheScaleName),
+                case .ndArray(let kScaleDesc) = desc.stateDescriptor(of: Self.keyCacheScaleName),
+                case .ndArray(let vScaleDesc) = desc.stateDescriptor(of: Self.valueCacheScaleName)
+            {
+                let kScaleView = kScale.mutableRawView().slice(at: kScaleDesc.shape.map { 0..<$0 })
+                let vScaleView = vScale.mutableRawView().slice(at: vScaleDesc.shape.map { 0..<$0 })
+                states.insert(kScaleView, for: Self.keyCacheScaleName)
+                states.insert(vScaleView, for: Self.valueCacheScaleName)
+            }
+
             var outputs = try await fn.run(
                 inputs: inputs,
                 states: consume states,
