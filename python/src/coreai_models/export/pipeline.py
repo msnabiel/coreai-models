@@ -301,7 +301,12 @@ async def _async_export_model(config: ExportConfig) -> str:
                 torch.arange(query_len).to(torch.uint16).unsqueeze(0).expand(batch_size, query_len)
             )
             in_step = torch.zeros((1,), dtype=torch.int32)
-            causal_mask = torch.zeros(1, effective_max_ctx, 1, query_len, dtype=torch.float16)
+            # Use TRACE_KV_CACHE_SEQ_LEN here instead of effective_max_ctx so that
+            # palettization tracing never allocates a full 16k KV cache in RAM.
+            # The palettizer only needs to see the model's compute graph, not its
+            # full runtime context capacity.
+            pal_trace_len = min(effective_max_ctx, TRACE_KV_CACHE_SEQ_LEN)
+            causal_mask = torch.zeros(1, pal_trace_len, 1, query_len, dtype=torch.float16)
             if hasattr(hf_config, "head_dim") and isinstance(hf_config.head_dim, int):
                 head_dim = hf_config.head_dim
             else:
@@ -311,7 +316,7 @@ async def _async_export_model(config: ExportConfig) -> str:
                 1,  # batch_size
                 hf_config.num_key_value_heads * head_dim,
                 1,
-                effective_max_ctx,
+                pal_trace_len,
                 dtype=torch.float16,
             )
             value_cache = key_cache.clone()

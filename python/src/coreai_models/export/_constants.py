@@ -20,4 +20,4 @@ QUANT_TRACE_OFFSET = 8
 
 # Default max context length for iOS exports. Users can raise it via
 # --max-context-length (up to the model's max_position_embeddings).
-IOS_DEFAULT_MAX_CONTEXT_LENGTH = 4096
+IOS_DEFAULT_MAX_CONTEXT_LENGTH = 16384

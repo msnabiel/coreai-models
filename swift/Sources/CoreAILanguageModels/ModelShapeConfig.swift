@@ -103,4 +103,22 @@ public struct ModelShapeSelector: Sendable {
         }
         return nil
     }
+
+    /// Select shape for prefill (prompt ingestion), preferring the largest
+    /// query bucket that fits the remaining tokens. Larger buckets amortize
+    /// the per-invocation overhead and are critical for fast time-to-first-token
+    /// on long prompts (e.g. 4k–16k context).
+    /// - Parameters:
+    ///   - currentSeqLength: Current sequence length (tokens already in KV cache)
+    ///   - tokensToProcess: Number of prompt tokens remaining to prefill
+    /// - Returns: Shape config or nil if no shape fits
+    public func selectShapeForPrefill(currentSeqLength: Int, tokensToProcess: Int) -> ModelShapeConfig? {
+        // Try descending: 1024, 512, 256, 128, 64, 16, 8
+        for querySize in [1024, 512, 256, 128, 64, 16, 8] where tokensToProcess <= querySize {
+            if let shape = selectShape(currentSeqLength: currentSeqLength, desiredQuerySize: querySize) {
+                return shape
+            }
+        }
+        return nil
+    }
 }

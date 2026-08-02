@@ -21,6 +21,7 @@ from coreai.authoring import AIProgram
 from coreai.authoring.types import AllocationType, HardwareConstraints
 from coreai_torch import TorchConverter
 
+from coreai_models.export._constants import TRACE_KV_CACHE_SEQ_LEN
 from coreai_models.export.mlir_ops import (
     register_custom_torch_lowering,
     remove_functionalization,
@@ -74,12 +75,18 @@ def _build_ios_reference_inputs(
     batch_size = 1
     query_len = 8
 
+    # Use a bounded size for reference tensors to keep export-time memory
+    # proportional to the trace size, not the full (possibly 16k) context.
+    # Dynamic shapes still declare max=max_context_length so the exported
+    # program covers the full range at inference time.
+    ref_cache_len = min(max_context_length, TRACE_KV_CACHE_SEQ_LEN)
+
     input_ids = torch.randint(1, vocab_size, (batch_size, query_len), dtype=torch.int32)
     position_ids = (
         torch.arange(query_len).to(torch.uint16).unsqueeze(0).expand(batch_size, query_len)
     )
     in_step = torch.zeros((1,), dtype=torch.int32)
-    causal_mask = torch.zeros(1, max_context_length, 1, query_len, dtype=torch.float16)
+    causal_mask = torch.zeros(1, ref_cache_len, 1, query_len, dtype=torch.float16)
 
     if hasattr(config, "head_dim") and isinstance(config.head_dim, int):
         head_dim = config.head_dim
@@ -91,7 +98,7 @@ def _build_ios_reference_inputs(
         1,
         config.num_key_value_heads * head_dim,
         1,
-        max_context_length,
+        ref_cache_len,
         dtype=torch.float16,
     )
     value_cache = key_cache.clone()
@@ -263,14 +270,21 @@ async def _convert_to_coreai(
     coreai_program: AIProgram = converter.to_coreai()
 
     # ----- Static shape configs for iOS specialization -----
-    query_lengths = [8, 16, 64]
+    # Decode query sizes (8, 16, 64) handle single-token and small-batch decode.
+    # Prefill query sizes (128–1024) cover long-prompt processing efficiently;
+    # the engine picks the tightest fit, so intermediate sizes still land on a
+    # decode bucket if the prompt is short.
+    query_lengths = [8, 16, 64, 128, 256, 512, 1024]
 
     gather_static_cfg: dict[str, dict[str, tuple[int, ...]]] = {}
     for q_len in query_lengths:
         gather_static_cfg[f'"{q_len}"'] = {TOKEN_IDS_INPUT_NAME: (1, q_len)}
 
     forward_static_cfg: dict[str, dict[str, tuple[int, ...]]] = {}
-    cache_len = 256
+    # Start cache specializations at 64 tokens so very short conversations
+    # (e.g. a single turn of ~50 tokens) pay for only 64-token KV cache
+    # instead of 256, saving up to 4× of early-turn cache memory.
+    cache_len = 64
     while cache_len <= max_context_length:
         for q_len in query_lengths:
             forward_static_cfg[f'"{cache_len}_{q_len}"'] = {

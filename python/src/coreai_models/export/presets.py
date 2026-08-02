@@ -145,6 +145,24 @@ IOS_PRESETS: dict[str, dict[str, Any]] = {
         "suffix": "4bit_palettized_group32",
         "description": "INT4 weight palettization with a group size of 32 (torch pre-export)",
     },
+    # 2-bit palettization halves model size vs 4-bit, making 16k-context models
+    # feasible on iPhone within the ~4 GB memory envelope. Accuracy loss is
+    # noticeable on smaller models; pair with a 3B+ architecture for best results.
+    "2bit_weight_palettized_group16": {
+        "torch_palettization_config": {
+            "global_config": {
+                "op_state_spec": {
+                    "weight": {
+                        "n_bits": 2,
+                        "granularity": {"type": "per_grouped_channel", "axis": 0, "group_size": 16},
+                    }
+                }
+            },
+            "module_type_configs": _IOS_PALETTIZATION_EMBEDDING_EXCLUSIONS,
+        },
+        "suffix": "2bit_palettized_group16",
+        "description": "INT2 weight palettization (group 16) — maximum compression for 16k context on device",
+    },
 }
 
 # Default preset when --model is used without explicit --compression
