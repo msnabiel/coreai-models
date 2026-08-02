@@ -19,6 +19,19 @@ uv run coreai.llm.export microsoft/Phi-3-mini-4k-instruct \
   --num-layers 1 --max-context-length 512 --experimental
 ```
 
+## Export and upload both variants
+
+From the repository root, after authenticating with `hf auth login`:
+
+```bash
+sh models/phi3/export_and_upload.sh
+```
+
+The script uploads `phi_3_5_mini_instruct_static` (iOS) and
+`phi_3_5_mini_instruct_4bit_dynamic` (macOS) to `Nabiel/FlowKit-Lyra`, then
+removes only its temporary local export directory. If a step fails, the
+temporary artifacts are preserved for debugging.
+
 The registered 4096-token Phi-3.5 export uses the checkpoint’s `short_factor`
 LongRoPE branch. The adapter intentionally rejects exports beyond the original
 4096-token context until dynamic LongRoPE selection is implemented and tested.
