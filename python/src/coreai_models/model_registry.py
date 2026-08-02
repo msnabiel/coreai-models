@@ -8,8 +8,8 @@
 CLI:
     uv run coreai.model.registry --list-families --type llm
     uv run coreai.model.registry --list-models --type llm --platform iOS
-    uv run coreai.model.registry --model-info qwen3-0.6b --platform iOS --json
-    uv run coreai.model.registry --model-info qwen3-0.6b --platform iOS --as-export-args
+    uv run coreai.model.registry --model-info qwen3-4b --platform iOS --json
+    uv run coreai.model.registry --model-info qwen3-4b --platform iOS --as-export-args
     uv run coreai.model.registry --list-models --type utility
     uv run coreai.model.registry --model-info clip-vit-b32 --type utility --as-export-args
 
@@ -82,7 +82,6 @@ LLM_PRESETS: list[ModelPreset] = [
         "float16",
         32768,
     ),
-    ModelPreset("qwen3-0.6b", "Qwen/Qwen3-0.6B", "qwen3", "llm", "macOS", "4bit", "float16", 8192),
     ModelPreset("qwen3-4b", "Qwen/Qwen3-4B", "qwen3", "llm", "macOS", "4bit", "float16", 40960),
     ModelPreset("qwen3-8b", "Qwen/Qwen3-8B", "qwen3", "llm", "macOS", "4bit", "float16", 40960),
     ModelPreset(
@@ -154,17 +153,6 @@ LLM_PRESETS: list[ModelPreset] = [
         "gpt-oss-20b", "openai/gpt-oss-20b", "gpt-oss", "llm", "macOS", "none", "bfloat16", 32768
     ),
     # --- iOS (compression = palettized) ---
-    ModelPreset(
-        "qwen3-0.6b",
-        "Qwen/Qwen3-0.6B",
-        "qwen3",
-        "llm",
-        "iOS",
-        "none",
-        "float16",
-        IOS_DEFAULT_MAX_CONTEXT_LENGTH,
-        compression_config="models/qwen3/qwen3_0_6b_mixed_4bit_8bit.yaml",
-    ),
     ModelPreset(
         "qwen2.5-1.5b-instruct",
         "Qwen/Qwen2.5-1.5B-Instruct",
@@ -1046,7 +1034,7 @@ def _action_summary() -> None:
     print("  coreai.model.registry --list-models --type llm")
     print("  coreai.model.registry --list-models --type utility")
     print("  coreai.model.registry --list-families --type llm")
-    print("  coreai.model.registry --model-info qwen3-0.6b --platform iOS")
+    print("  coreai.model.registry --model-info qwen3-4b --platform iOS")
     print("  coreai.model.registry --model-info clip-vit-b32 --type utility --as-export-args")
     print("  coreai.model.registry --help")
 
