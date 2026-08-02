@@ -7,7 +7,7 @@ import torch
 from torch import nn
 from typing_extensions import Self
 
-from coreai_models.primitives._ops import mutable_cache_update_and_fetch
+from coreai_models.primitives._ops import mutable_cache_update_and_fetch, mutable_slice_update
 
 
 class KVCacheHandler:
@@ -73,9 +73,17 @@ class KVCacheHandler:
         self._k_cache = key_cache
         self._v_cache = value_cache
 
+    def register_scale_caches(
+        self, key_scale_cache: torch.Tensor, value_scale_cache: torch.Tensor
+    ):
+        self._k_scale = key_scale_cache
+        self._v_scale = value_scale_cache
+
     def __init__(self: Self, n_layers: int, hidden_size: int):
         self._k_cache = None
         self._v_cache = None
+        self._k_scale = None
+        self._v_scale = None
 
         # Register constant buffers to the owner of this object for use in indexing the kv cache
         with torch.device("cpu"):
@@ -91,6 +99,18 @@ class KVCacheHandler:
                 torch.arange(1, n_layers + 1, dtype=torch.int32).unsqueeze(1),
                 persistent=False,
             )
+
+    def gen_scale_slice_args(
+        self, layer_idx: int, offset: torch.IntTensor, num_token_updates: int
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Slice args for the scale cache (shape [n_layers, 1, 1, 1, max_seq_len])."""
+        layer_index = self._layer_indices[layer_idx].to(offset.device)
+        layer_index_end = self._layer_indices_end[layer_idx].to(offset.device)
+        _zero = self._zero.to(offset.device)
+        _one = self._one.to(offset.device)
+        begin = torch.cat([layer_index, _zero, _zero, _zero, offset])
+        end = torch.cat([layer_index_end, _one, _one, _one, offset + num_token_updates])
+        return begin, end
 
     def gen_slice_args(
         self, layer_idx: int, offset: torch.IntTensor, num_token_updates: int
@@ -155,7 +175,38 @@ class KVCacheHandler:
 
         begin, end = self.gen_slice_args(layer_idx, offset, num_token_updates)
 
-        # update k and fetch the full layer row in a single fused op.
+        if self._k_scale is not None:
+            # Int8 KV cache: quantize per token before writing, dequantize on read.
+            # k/v shape: [batch, n_kv_heads*head_dim, 1, query_len]
+            # Reduce over all dims except the token dim to get a per-token scale.
+            k_scale = k.float().abs().amax(dim=(0, 1, 2), keepdim=True).clamp(min=1e-6) / 127.0
+            v_scale = v.float().abs().amax(dim=(0, 1, 2), keepdim=True).clamp(min=1e-6) / 127.0
+            q_k = (k.float() / k_scale).clamp(-127, 127).to(torch.int8)
+            q_v = (v.float() / v_scale).clamp(-127, 127).to(torch.int8)
+
+            mutable_slice_update(x=self._k_cache, update=q_k.unsqueeze(0), begin=begin, end=end)
+            mutable_slice_update(x=self._v_cache, update=q_v.unsqueeze(0), begin=begin, end=end)
+
+            scale_begin, scale_end = self.gen_scale_slice_args(layer_idx, offset, num_token_updates)
+            mutable_slice_update(
+                x=self._k_scale,
+                update=k_scale.to(torch.float16).unsqueeze(0),
+                begin=scale_begin,
+                end=scale_end,
+            )
+            mutable_slice_update(
+                x=self._v_scale,
+                update=v_scale.to(torch.float16).unsqueeze(0),
+                begin=scale_begin,
+                end=scale_end,
+            )
+
+            # Dequantize for SDPA — scale broadcasts over the n_kv_heads*head_dim dim.
+            k_out = self._k_cache[layer_idx].to(torch.float16) * self._k_scale[layer_idx]
+            v_out = self._v_cache[layer_idx].to(torch.float16) * self._v_scale[layer_idx]
+            return k_out, v_out
+
+        # Float16 path - use upstream's fused op
         k_out = mutable_cache_update_and_fetch(
             x=self._k_cache,
             update=k,
@@ -165,8 +216,6 @@ class KVCacheHandler:
             seq_dim=-1,
             seq_len=None,
         )
-
-        # update v and fetch the full layer row in a single fused op
         v_out = mutable_cache_update_and_fetch(
             x=self._v_cache,
             update=v,
@@ -176,7 +225,6 @@ class KVCacheHandler:
             seq_dim=-1,
             seq_len=None,
         )
-
         return k_out, v_out
 
     @property
@@ -186,3 +234,11 @@ class KVCacheHandler:
     @property
     def v_cache(self) -> torch.Tensor:
         return self._v_cache
+
+    @property
+    def k_scale(self) -> torch.Tensor | None:
+        return self._k_scale
+
+    @property
+    def v_scale(self) -> torch.Tensor | None:
+        return self._v_scale

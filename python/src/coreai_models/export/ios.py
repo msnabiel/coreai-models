@@ -21,6 +21,7 @@ from coreai.authoring import AIProgram
 from coreai.authoring.types import AllocationType, HardwareConstraints
 from coreai_torch import TorchConverter
 
+from coreai_models.export._constants import TRACE_KV_CACHE_SEQ_LEN
 from coreai_models.export.mlir_ops import (
     register_custom_torch_lowering,
     remove_functionalization,
@@ -50,6 +51,8 @@ IN_STEP_INPUT_NAME = "in_step"
 CAUSAL_MASK_INPUT_NAME = "causal_mask"
 KEY_CACHE_INPUT_NAME = "key_cache"
 VALUE_CACHE_INPUT_NAME = "value_cache"
+KEY_SCALE_CACHE_INPUT_NAME = "key_scale_cache"
+VALUE_SCALE_CACHE_INPUT_NAME = "value_scale_cache"
 KEY_CACHE_OUTPUT_NAME = "new_k_cache"
 VALUE_CACHE_OUTPUT_NAME = "new_v_cache"
 OUTPUT_LOGITS_NAME = "out_logits"
@@ -74,27 +77,41 @@ def _build_ios_reference_inputs(
     batch_size = 1
     query_len = 8
 
+    # Use a bounded size for reference tensors to keep export-time memory
+    # proportional to the trace size, not the full (possibly 16k) context.
+    # Dynamic shapes still declare max=max_context_length so the exported
+    # program covers the full range at inference time.
+    ref_cache_len = min(max_context_length, TRACE_KV_CACHE_SEQ_LEN)
+
     input_ids = torch.randint(1, vocab_size, (batch_size, query_len), dtype=torch.int32)
     position_ids = (
         torch.arange(query_len).to(torch.uint16).unsqueeze(0).expand(batch_size, query_len)
     )
     in_step = torch.zeros((1,), dtype=torch.int32)
-    causal_mask = torch.zeros(1, max_context_length, 1, query_len, dtype=torch.float16)
+    causal_mask = torch.zeros(1, ref_cache_len, 1, query_len, dtype=torch.float16)
 
     if hasattr(config, "head_dim") and isinstance(config.head_dim, int):
         head_dim = config.head_dim
     else:
         head_dim = config.hidden_size // config.num_attention_heads
 
+    # Int8 quantized KV cache — 2× memory reduction vs float16.
     key_cache = torch.zeros(
         config.num_hidden_layers,
         1,
         config.num_key_value_heads * head_dim,
         1,
-        max_context_length,
-        dtype=torch.float16,
+        ref_cache_len,
+        dtype=torch.int8,
     )
     value_cache = key_cache.clone()
+
+    # Per-token scale tensors: one float16 scale per (layer, token) position.
+    # Shape [n_layers, 1, 1, 1, max_seq_len] — tiny compared to the KV cache itself.
+    key_scale_cache = torch.ones(
+        config.num_hidden_layers, 1, 1, 1, ref_cache_len, dtype=torch.float16
+    )
+    value_scale_cache = key_scale_cache.clone()
 
     # Generate embeddings from the model
     embedding_table = model.load_embeddings.embedding_table
@@ -107,6 +124,8 @@ def _build_ios_reference_inputs(
         CAUSAL_MASK_INPUT_NAME: causal_mask,
         KEY_CACHE_INPUT_NAME: key_cache,
         VALUE_CACHE_INPUT_NAME: value_cache,
+        KEY_SCALE_CACHE_INPUT_NAME: key_scale_cache,
+        VALUE_SCALE_CACHE_INPUT_NAME: value_scale_cache,
         EMBEDDING_TABLE_INPUT_NAME: embedding_table,
     }
 
@@ -122,6 +141,8 @@ def _build_ios_reference_inputs(
         CAUSAL_MASK_INPUT_NAME: {1: cache_len_dim, 3: seq_len_dim},
         KEY_CACHE_INPUT_NAME: {4: cache_len_dim},
         VALUE_CACHE_INPUT_NAME: {4: cache_len_dim},
+        KEY_SCALE_CACHE_INPUT_NAME: {4: cache_len_dim},
+        VALUE_SCALE_CACHE_INPUT_NAME: {4: cache_len_dim},
         EMBEDDING_TABLE_INPUT_NAME: None,
     }
 
@@ -240,6 +261,8 @@ async def _convert_to_coreai(
     state_names = [
         KEY_CACHE_INPUT_NAME,
         VALUE_CACHE_INPUT_NAME,
+        KEY_SCALE_CACHE_INPUT_NAME,
+        VALUE_SCALE_CACHE_INPUT_NAME,
     ]
     output_names = [
         OUTPUT_LOGITS_NAME,
@@ -263,14 +286,21 @@ async def _convert_to_coreai(
     coreai_program: AIProgram = converter.to_coreai()
 
     # ----- Static shape configs for iOS specialization -----
-    query_lengths = [8, 16, 64]
+    # Decode query sizes (8, 16, 64) handle single-token and small-batch decode.
+    # Prefill query sizes (128–1024) cover long-prompt processing efficiently;
+    # the engine picks the tightest fit, so intermediate sizes still land on a
+    # decode bucket if the prompt is short.
+    query_lengths = [8, 16, 64, 128, 256, 512, 1024]
 
     gather_static_cfg: dict[str, dict[str, tuple[int, ...]]] = {}
     for q_len in query_lengths:
         gather_static_cfg[f'"{q_len}"'] = {TOKEN_IDS_INPUT_NAME: (1, q_len)}
 
     forward_static_cfg: dict[str, dict[str, tuple[int, ...]]] = {}
-    cache_len = 256
+    # Start cache specializations at 64 tokens so very short conversations
+    # (e.g. a single turn of ~50 tokens) pay for only 64-token KV cache
+    # instead of 256, saving up to 4× of early-turn cache memory.
+    cache_len = 64
     while cache_len <= max_context_length:
         for q_len in query_lengths:
             forward_static_cfg[f'"{cache_len}_{q_len}"'] = {
@@ -279,6 +309,8 @@ async def _convert_to_coreai(
                 CAUSAL_MASK_INPUT_NAME: (1, cache_len, 1, q_len),
                 KEY_CACHE_INPUT_NAME: (num_layers, 1, kv_cached_embed_size, 1, cache_len),
                 VALUE_CACHE_INPUT_NAME: (num_layers, 1, kv_cached_embed_size, 1, cache_len),
+                KEY_SCALE_CACHE_INPUT_NAME: (num_layers, 1, 1, 1, cache_len),
+                VALUE_SCALE_CACHE_INPUT_NAME: (num_layers, 1, 1, 1, cache_len),
             }
         cache_len *= 2
 
@@ -295,6 +327,12 @@ async def _convert_to_coreai(
         interleave=[1, 1, KV_CACHE_INTERLEAVE_FACTOR, 1, 1],
         alignments=[1, 1, 1, 1, KV_CACHE_INTERLEAVE_FACTOR * max_context_length, 1],
     )
+    # Scale cache: shape [n_layers, 1, 1, 1, max_seq_len] — no interleaving needed.
+    scale_cache_constraints = HardwareConstraints(
+        AllocationType.IOSurface,
+        interleave=[1, 1, 1, 1, 1],
+        alignments=[1, 1, 1, 1, 1, 1],
+    )
 
     gather_constraints = {EMBEDDING_TABLE_INPUT_NAME: emb_table_constraints}
     forward_constraints = {
@@ -303,6 +341,8 @@ async def _convert_to_coreai(
         KEY_CACHE_OUTPUT_NAME: cache_constraints,
         VALUE_CACHE_INPUT_NAME: cache_constraints,
         VALUE_CACHE_OUTPUT_NAME: cache_constraints,
+        KEY_SCALE_CACHE_INPUT_NAME: scale_cache_constraints,
+        VALUE_SCALE_CACHE_INPUT_NAME: scale_cache_constraints,
     }
     load_constraints = {EMBEDDING_TABLE_INPUT_NAME: emb_table_constraints}
 
