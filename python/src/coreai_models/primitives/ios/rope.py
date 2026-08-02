@@ -63,11 +63,13 @@ class RoPECache(torch.nn.Module):
         head_dim: int,
         max_cache_size: int,
         base: float = 500_000,
+        freq_factors: torch.Tensor | None = None,
     ) -> None:
         super().__init__()
         self._head_dim = head_dim
         self._max_cache_size = max_cache_size
         self._base = base
+        self._freq_factors = freq_factors
         self._use_hf_impl = os.environ.get("USE_HF_IMPL", "False").lower() == "true"
         self._compute_sin_and_cos()
 
@@ -95,6 +97,8 @@ class RoPECache(torch.nn.Module):
                 base
                 ** (torch.arange(start=0, end=head_dim, step=2, dtype=torch.float32) / head_dim)
             )
+            if self._freq_factors is not None:
+                theta = theta / self._freq_factors.to(dtype=theta.dtype)
 
             if self._use_hf_impl:
                 theta = theta.to(dtype)

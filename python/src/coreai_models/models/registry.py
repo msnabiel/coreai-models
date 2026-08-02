@@ -31,11 +31,13 @@ class ModelEntry:
 def _get_registry() -> dict[str, ModelEntry]:
     """Build the model registry (cached singleton). Lazy imports to avoid circular deps."""
     from coreai_models.models.ios.mistral import MistralForCausalLMForiOS
+    from coreai_models.models.ios.phi3 import Phi3ForCausalLMForiOS
     from coreai_models.models.ios.qwen2 import Qwen2ForCausalLMForiOS
     from coreai_models.models.ios.qwen3 import Qwen3ForCausalLMForiOS
     from coreai_models.models.macos.gemma3_text import Gemma3ForCausalLM
     from coreai_models.models.macos.gpt_oss import GptOssForCausalLM
     from coreai_models.models.macos.mistral import MistralForCausalLM
+    from coreai_models.models.macos.phi3 import Phi3ForCausalLM
     from coreai_models.models.macos.mixtral import MixtralForCausalLM
     from coreai_models.models.macos.qwen2 import Qwen2ForCausalLM
     from coreai_models.models.macos.qwen3 import Qwen3ForCausalLM
@@ -57,6 +59,7 @@ def _get_registry() -> dict[str, ModelEntry]:
             macos_class=MistralForCausalLM,
             ios_class=MistralForCausalLMForiOS,
         ),
+        "phi3": ModelEntry(macos_class=Phi3ForCausalLM, ios_class=Phi3ForCausalLMForiOS),
         "mixtral": ModelEntry(
             macos_class=MixtralForCausalLM,
         ),
