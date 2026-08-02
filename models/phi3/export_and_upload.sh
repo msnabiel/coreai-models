@@ -8,6 +8,9 @@ REPO_ID=${HF_REPO_ID:-Nabiel/FlowKit-Lyra}
 PYTHON_BIN=${PYTHON_BIN:-.venv/bin/python}
 HF_CLI=${HF_CLI:-.venv/bin/hf}
 MODEL_ID=phi-3.5-mini-instruct
+# Phi-3.5 is stored in Xet-backed shards. Standard HTTP downloads are more
+# reliable for this script and still use the normal Hugging Face cache.
+export HF_HUB_DISABLE_XET=1
 WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/flowkit-phi3.XXXXXX")
 
 cleanup_on_exit() {
@@ -52,4 +55,3 @@ echo "Uploading macOS bundle to $REPO_ID..."
 echo "Both uploads succeeded; deleting local export artifacts: $WORK_DIR"
 rm -rf "$WORK_DIR"
 trap - EXIT HUP INT TERM
-
