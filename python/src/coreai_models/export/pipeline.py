@@ -64,6 +64,16 @@ class ExportConfig:
     overwrite: bool = False
     # iOS only. When True, embedding table is not quantized to int8.
     disable_embedding_quantization: bool = False
+    # Quantize the KV cache to int8 (halves KV cache RAM, negligible accuracy
+    # impact — see primitives/{ios,macos}/cache.py). Defaults to True on iOS
+    # (memory-constrained, always beneficial; iOS has no opt-out — the Swift
+    # static-shape engine already supports the 4-state contract) and False on
+    # macOS: exporting a quantized KV cache produces a 4-state AIProgram that
+    # the current macOS Swift runtime engines (CoreAISequentialEngine,
+    # CoreAIPipelinedEngine) don't yet support — they hard-require exactly 2
+    # states. Set explicitly to True on macOS once your runtime has 4-state
+    # support.
+    quantize_kv_cache: bool | None = None
     # Optional prebuilt coreai-opt config (KMeansPalettizerConfig or
     # QuantizerConfig) loaded from a user-provided YAML. When set, the pipeline
     # uses this directly and ignores `compression` for config resolution
@@ -179,6 +189,12 @@ async def _async_export_model(config: ExportConfig) -> str:
     if config.num_layers is not None:
         hf_config.num_hidden_layers = config.num_layers
 
+    # Resolve the effective KV cache quantization setting and normalize it
+    # onto the config so downstream export functions (export_macos_model,
+    # the weight-quantization trace below) see a single source of truth.
+    if config.quantize_kv_cache is None:
+        config.quantize_kv_cache = config.variant == "iOS"
+
     logger.info(f"Loading {config.hf_model_id} ({config.variant}, dtype={target_dtype})...")
 
     # Memory-efficient layer-by-layer loading + quantizer disk-checkpointing
@@ -252,10 +268,15 @@ async def _async_export_model(config: ExportConfig) -> str:
 
             saved_max_pos = hf_config.max_position_embeddings
             hf_config.max_position_embeddings = TRACE_KV_CACHE_SEQ_LEN
-            k_cache, v_cache = KVCache.create_cache_tensors(hf_config, dtype=target_dtype)
+            if config.quantize_kv_cache:
+                k_cache, v_cache, k_scale, v_scale = KVCache.create_quantized_cache_tensors(
+                    hf_config
+                )
+            else:
+                k_cache, v_cache = KVCache.create_cache_tensors(hf_config, dtype=target_dtype)
+                k_scale, v_scale = None, None
             hf_config.max_position_embeddings = saved_max_pos
 
-            quantization_inputs = (input_ids, position_ids, k_cache, v_cache)
             quantization_dynamic_shapes = {
                 "input_ids": {1: torch.export.Dim("seq_ids", max=TRACE_KV_CACHE_SEQ_LEN - 2)},
                 "position_ids": {
@@ -266,6 +287,12 @@ async def _async_export_model(config: ExportConfig) -> str:
                 "k_cache": None,
                 "v_cache": None,
             }
+            if config.quantize_kv_cache:
+                quantization_inputs = (input_ids, position_ids, k_cache, v_cache, k_scale, v_scale)
+                quantization_dynamic_shapes["k_scale_cache"] = None
+                quantization_dynamic_shapes["v_scale_cache"] = None
+            else:
+                quantization_inputs = (input_ids, position_ids, k_cache, v_cache)
 
             def get_calibration_data():  # type: ignore[no-untyped-def]
                 tokenizer = AutoTokenizer.from_pretrained(config.hf_model_id)
@@ -301,7 +328,12 @@ async def _async_export_model(config: ExportConfig) -> str:
                 torch.arange(query_len).to(torch.uint16).unsqueeze(0).expand(batch_size, query_len)
             )
             in_step = torch.zeros((1,), dtype=torch.int32)
-            causal_mask = torch.zeros(1, effective_max_ctx, 1, query_len, dtype=torch.float16)
+            # Use TRACE_KV_CACHE_SEQ_LEN here instead of effective_max_ctx so that
+            # palettization tracing never allocates a full 16k KV cache in RAM.
+            # The palettizer only needs to see the model's compute graph, not its
+            # full runtime context capacity.
+            pal_trace_len = min(effective_max_ctx, TRACE_KV_CACHE_SEQ_LEN)
+            causal_mask = torch.zeros(1, pal_trace_len, 1, query_len, dtype=torch.float16)
             if hasattr(hf_config, "head_dim") and isinstance(hf_config.head_dim, int):
                 head_dim = hf_config.head_dim
             else:
@@ -311,7 +343,7 @@ async def _async_export_model(config: ExportConfig) -> str:
                 1,  # batch_size
                 hf_config.num_key_value_heads * head_dim,
                 1,
-                effective_max_ctx,
+                pal_trace_len,
                 dtype=torch.float16,
             )
             value_cache = key_cache.clone()

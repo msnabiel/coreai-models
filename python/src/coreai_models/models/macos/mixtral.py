@@ -185,8 +185,10 @@ class MixtralForCausalLM(BaseForCausalLM):
         position_ids: torch.IntTensor,
         k_cache: torch.Tensor,
         v_cache: torch.Tensor,
+        k_scale_cache: torch.Tensor | None = None,
+        v_scale_cache: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        cache = KVCache(k_cache, v_cache)
+        cache = KVCache(k_cache, v_cache, k_scale_cache, v_scale_cache)
         out = self.model(input_ids, position_ids, cache)
         return self.lm_head(out)
 

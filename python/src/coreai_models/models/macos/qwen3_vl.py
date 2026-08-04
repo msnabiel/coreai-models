@@ -173,8 +173,10 @@ class Qwen3VLForCausalLM(BaseForCausalLM):
         position_ids: torch.IntTensor,
         k_cache: torch.Tensor,
         v_cache: torch.Tensor,
+        k_scale_cache: torch.Tensor | None = None,
+        v_scale_cache: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        cache = KVCache(k_cache, v_cache)
+        cache = KVCache(k_cache, v_cache, k_scale_cache, v_scale_cache)
         out = self.model(input_ids, position_ids, cache)
         return self.lm_head(out)
 
@@ -282,7 +284,8 @@ class Qwen3VLModelEmbeddings(nn.Module):
 class Qwen3VLForCausalLMEmbeddings(BaseForCausalLM):
     """Engine-compatible Qwen3-VL text decoder (inputs_embeds variant).
 
-    forward(inputs_embeds, position_ids, k_cache, v_cache) -> logits
+    forward(inputs_embeds, position_ids, k_cache, v_cache, k_scale_cache=None,
+    v_scale_cache=None) -> logits
     """
 
     _HF_MODEL_CLASS = HFQwen3VLForConditionalGeneration
@@ -326,8 +329,10 @@ class Qwen3VLForCausalLMEmbeddings(BaseForCausalLM):
         position_ids: torch.IntTensor,
         k_cache: torch.Tensor,
         v_cache: torch.Tensor,
+        k_scale_cache: torch.Tensor | None = None,
+        v_scale_cache: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        cache = KVCache(k_cache, v_cache)
+        cache = KVCache(k_cache, v_cache, k_scale_cache, v_scale_cache)
         out = self.model(inputs_embeds, position_ids, cache)
         return self.lm_head(out)
 

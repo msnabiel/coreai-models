@@ -200,9 +200,12 @@ class Qwen3Extend(nn.Module):
         causal_mask: torch.Tensor,
         key_cache: torch.Tensor,
         value_cache: torch.Tensor,
+        key_scale_cache: torch.Tensor,
+        value_scale_cache: torch.Tensor,
         embedding_table: torch.Tensor | None = None,
     ) -> torch.Tensor:
         self.kv_cache.register_kv_cache(key_cache, value_cache)
+        self.kv_cache.register_scale_caches(key_scale_cache, value_scale_cache)
         rope_cos, rope_sin = self.rope.gather_cos_sin(position_ids)
 
         batch_size, seq_len, _, hidden_dim = transformer_input.shape
@@ -215,7 +218,9 @@ class Qwen3Extend(nn.Module):
             self.kv_cache,
         )
         if self.prefill_mode:
-            return self.kv_cache.k_cache[0, 0, 0, 0, 0] + self.kv_cache.v_cache[0, 0, 0, 0, 0]
+            k0 = self.kv_cache.k_cache[0, 0, 0, 0, 0].to(torch.float16)
+            v0 = self.kv_cache.v_cache[0, 0, 0, 0, 0].to(torch.float16)
+            return k0 + v0
 
         if self.lm_head is not None:
             return self.lm_head(out.transpose(-2, -3))
@@ -250,6 +255,8 @@ class Qwen3ForCausalLMForiOS(BaseForCausalLMForiOS):
         causal_mask: torch.Tensor,
         key_cache: torch.Tensor,
         value_cache: torch.Tensor,
+        key_scale_cache: torch.Tensor,
+        value_scale_cache: torch.Tensor,
     ) -> torch.Tensor:
         token_embeddings = self.gather_embeddings(input_ids, self.load_embeddings.embedding_table)
         return self.extend(
@@ -259,6 +266,8 @@ class Qwen3ForCausalLMForiOS(BaseForCausalLMForiOS):
             causal_mask,
             key_cache,
             value_cache,
+            key_scale_cache,
+            value_scale_cache,
             self.load_embeddings.embedding_table,
         )
 

@@ -19,10 +19,12 @@ from coreai.authoring import AIProgram
 
 from coreai_models.export._constants import (
     KEY_CACHE_NAME,
+    KEY_SCALE_CACHE_NAME,
     QUANT_TRACE_OFFSET,
     QUANT_TRACE_QUERY_LEN,
     TRACE_KV_CACHE_SEQ_LEN,
     VALUE_CACHE_NAME,
+    VALUE_SCALE_CACHE_NAME,
 )
 from coreai_models.export.mlir_ops import (
     register_custom_torch_lowering,
@@ -68,6 +70,7 @@ def _build_reference_inputs(
     config,
     target_dtype: torch.dtype,
     max_context_length: int,
+    quantize_kv_cache: bool = False,
 ) -> tuple[dict[str, torch.Tensor], dict]:
     """Build reference inputs and dynamic shapes for macOS model export.
 
@@ -76,6 +79,8 @@ def _build_reference_inputs(
         config: HuggingFace model config.
         target_dtype: Data type for cache tensors.
         max_context_length: Maximum context length for the model.
+        quantize_kv_cache: When True, build an int8 KV cache + float16
+            per-token-per-head scale cache instead of a float16-only cache.
 
     Returns:
         Tuple of (reference_inputs dict, dynamic_shapes dict).
@@ -94,7 +99,10 @@ def _build_reference_inputs(
     # allocate a full-context cache for huge models
     saved_max_pos = config.max_position_embeddings
     config.max_position_embeddings = TRACE_KV_CACHE_SEQ_LEN
-    k_cache, v_cache = KVCache.create_cache_tensors(config, dtype=target_dtype)
+    if quantize_kv_cache:
+        k_cache, v_cache, k_scale, v_scale = KVCache.create_quantized_cache_tensors(config)
+    else:
+        k_cache, v_cache = KVCache.create_cache_tensors(config, dtype=target_dtype)
     config.max_position_embeddings = saved_max_pos
 
     reference_inputs = {
@@ -120,6 +128,20 @@ def _build_reference_inputs(
             )
         },
     }
+
+    if quantize_kv_cache:
+        reference_inputs["k_scale_cache"] = k_scale
+        reference_inputs["v_scale_cache"] = v_scale
+        dynamic_shapes["k_scale_cache"] = {
+            KVCache.seq_len_dim(): torch.export.Dim(
+                "k_scale_seq_len", min=TRACE_KV_CACHE_SEQ_LEN, max=max_context_length
+            )
+        }
+        dynamic_shapes["v_scale_cache"] = {
+            KVCache.seq_len_dim(): torch.export.Dim(
+                "v_scale_seq_len", min=TRACE_KV_CACHE_SEQ_LEN, max=max_context_length
+            )
+        }
 
     return reference_inputs, dynamic_shapes
 
@@ -220,20 +242,25 @@ def export_macos_model(
     if max_context_length is None:
         max_context_length = getattr(config, "max_position_embeddings", 2048)
 
+    quantize_kv_cache = bool(getattr(export_config, "quantize_kv_cache", False))
+
     # Determine target dtype from the model parameters
     target_dtype = next(model.parameters()).dtype
 
     logger.info(
-        f"Exporting macOS model (dtype={target_dtype}, max_context_length={max_context_length})"
+        f"Exporting macOS model (dtype={target_dtype}, max_context_length={max_context_length}, "
+        f"quantize_kv_cache={quantize_kv_cache})"
     )
 
     reference_inputs, dynamic_shapes = _build_reference_inputs(
-        model, config, target_dtype, max_context_length
+        model, config, target_dtype, max_context_length, quantize_kv_cache=quantize_kv_cache
     )
 
     input_names = ("input_ids", "position_ids")
     output_names = ("logits",)
     state_names = (KEY_CACHE_NAME, VALUE_CACHE_NAME)
+    if quantize_kv_cache:
+        state_names = state_names + (KEY_SCALE_CACHE_NAME, VALUE_SCALE_CACHE_NAME)
 
     logger.info("Exporting model to Core AI dialect...")
     coreai_program = export_to_coreai(

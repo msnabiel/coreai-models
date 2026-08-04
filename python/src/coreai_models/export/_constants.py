@@ -9,6 +9,12 @@
 KEY_CACHE_NAME = "keyCache"
 VALUE_CACHE_NAME = "valueCache"
 
+# Per-token scale cache names for optional int8 KV cache quantization (macOS).
+# Only present in the exported AIProgram when quantize_kv_cache is enabled —
+# existing 2-state (float16) Swift runtime engines are unaffected by default.
+KEY_SCALE_CACHE_NAME = "keyScaleCache"
+VALUE_SCALE_CACHE_NAME = "valueScaleCache"
+
 # Trace-time KV cache sequence length. Used only for export/quantization tracing
 # to bound peak memory; at inference the actual cache size is determined
 # dynamically.
@@ -20,4 +26,4 @@ QUANT_TRACE_OFFSET = 8
 
 # Default max context length for iOS exports. Users can raise it via
 # --max-context-length (up to the model's max_position_embeddings).
-IOS_DEFAULT_MAX_CONTEXT_LENGTH = 4096
+IOS_DEFAULT_MAX_CONTEXT_LENGTH = 16384
