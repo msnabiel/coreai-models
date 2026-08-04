@@ -133,6 +133,7 @@ let package = Package(
             name: "llm-runner",
             dependencies: [
                 "CoreAILanguageModels",
+                "CoreAIShared",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
             path: "swift/Sources/Tools/llm-runner",
@@ -156,6 +157,7 @@ let package = Package(
             name: "object-detector",
             dependencies: [
                 "CoreAIObjectDetector",
+                "CoreAIShared",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
             path: "swift/Sources/Tools/object-detector",
@@ -167,6 +169,7 @@ let package = Package(
             name: "diffusion-runner",
             dependencies: [
                 "CoreAIDiffusionPipeline",
+                "CoreAIShared",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
             path: "swift/Sources/Tools/diffusion-runner",
@@ -178,6 +181,7 @@ let package = Package(
             name: "speech-runner",
             dependencies: [
                 "CoreAISpeech",
+                "CoreAIShared",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
             path: "swift/Sources/Tools/speech-runner",
@@ -215,6 +219,7 @@ let package = Package(
             name: "LanguageModelsTests",
             dependencies: [
                 "CoreAILanguageModels",
+                "CoreAIShared",
                 "TestUtilities",
                 .product(name: "Transformers", package: "swift-transformers"),
             ],
